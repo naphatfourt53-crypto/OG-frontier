@@ -1,0 +1,60 @@
+extends Screen
+# Screen 7 - Mission report: explains WHY it worked or failed. Lets the player modify and rerun.
+
+func build() -> void:
+	star_seed = 71
+	var r: Dictionary = GameState.last_report
+	if r.is_empty():
+		go("station")
+		return
+	var ok: bool = r["success"]
+	var a: Dictionary = r["a"]
+	Pix.lbl(self, "MISSION REPORT", Vector2(20, 12), Vector2(500, 34), 26, Pix.EDGE)
+	Pix.lbl(self, "MISSION COMPLETE" if ok else "GAME OVER: " + String(r["reason"]).to_upper(), Vector2(20, 52), Vector2(900, 50), 38, Pix.GOOD if ok else Pix.BAD)
+	var why := ""
+	if ok:
+		why = "The crew landed, studied the ice, and returned home. Every system stayed inside its limits."
+	else:
+		var info: Dictionary = GameState.REASONS[r["reason"]]
+		why = "WHY: %s\nDETAIL: %s\nHOW TO FIX: %s" % [info["why"], r["detail"], info["fix"]]
+	Pix.lbl(self, why, Vector2(20, 108), Vector2(800, 110), 16)
+	# six resources (official challenge criteria)
+	Pix.panel(self, Vector2(20, 230), Vector2(600, 270))
+	Pix.lbl(self, "RESOURCES", Vector2(34, 236), Vector2(300, 24), 18, Pix.WARN)
+	var rows := [
+		"Mass:   %.1f t launched (limit %.0f t)" % [a["total_kg"] / 1000.0, a["mass_cap_kg"] / 1000.0],
+		"Power:  worst margin %+.1f kW (%.1f made, %.1f used)" % [r["min_net"], a["gen_solar"] + a["gen_other"], a["use"]],
+		"Budget: %.0f spent of %.0f" % [a["cost"], a["budget"]],
+		"Data:   +%d science (comm quality %d%%)" % [int(r["data_gain"]), int(a["comm_q"] * 100.0)],
+		"Comms:  %d%% link quality" % int(a["comm_q"] * 100.0),
+		"Time:   %.0f days (plan %.0f)" % [r["day"], GameState.mission_days(GameState.mission(r["mission"]))],
+		"Hull:   %d%%" % int(maxf(0.0, r["hull"]))
+	]
+	var y := 268.0
+	for t in rows:
+		Pix.lbl(self, t, Vector2(34, y), Vector2(580, 24), 16)
+		y += 30.0
+	# burns
+	Pix.panel(self, Vector2(640, 230), Vector2(620, 270))
+	Pix.lbl(self, "BURNS (rocket equation)", Vector2(654, 236), Vector2(400, 24), 18, Pix.WARN)
+	y = 268.0
+	for l in r["legs"]:
+		var good: bool = l["ok"]
+		Pix.lbl(self, "%s %s: need %.1f t, had %.1f t" % ["OK " if good else "FAIL", l["name"], l["need_t"], l["have_t"]], Vector2(654, y), Vector2(590, 24), 15, Pix.GOOD if good else Pix.BAD)
+		y += 28.0
+	Pix.lbl(self, "Delta-v: %.2f km/s available, %.2f needed.\nm_prop = m_f (e^(dv / (Isp*g0)) - 1)" % [a["dv"], a["dv_need"]], Vector2(654, y + 8), Vector2(590, 60), 14, Pix.DIM)
+	# decisions + score
+	var dec := "Decisions: " + ("none" if r["decisions"].is_empty() else "; ".join(PackedStringArray(r["decisions"])))
+	Pix.lbl(self, dec, Vector2(20, 510), Vector2(1240, 50), 14, Pix.DIM)
+	var prev := ""
+	if GameState.history.size() >= 2:
+		var p: Dictionary = GameState.history[GameState.history.size() - 2]
+		prev = "   |   Previous run: %d" % int(p["score"])
+	Pix.lbl(self, "SCORE %d   |   Best %d%s   |   Seed %d" % [int(r["score"]), GameState.best_score, prev, GameState.seed_value], Vector2(20, 565), Vector2(1240, 30), 20, Pix.WARN)
+	if ok:
+		Pix.lbl(self, "DEMO COMPLETE - Mars unlocked! Use your new Data to grow the station.", Vector2(20, 600), Vector2(1240, 30), 18, Pix.GOOD)
+	Pix.btn(self, "Modify ship & rerun (same seed)", Vector2(20, 650), Vector2(360, 48), func(): go("hangar"))
+	Pix.btn(self, "New seed, change ship", Vector2(390, 650), Vector2(280, 48), func():
+		GameState.new_seed()
+		go("hangar"))
+	Pix.btn(self, "Back to station", Vector2(990, 650), Vector2(270, 48), func(): go("station"))

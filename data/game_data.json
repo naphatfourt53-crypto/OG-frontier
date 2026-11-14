@@ -1,0 +1,108 @@
+{
+  "version": "2026-11-13",
+  "note": "Edit numbers here, no code change needed. Sources: NASA Game Data Book (physics.json). Values marked GAME are tuned for play, not real hardware.",
+  "constants": {
+    "g0": 9.80665,
+    "crew": 3,
+    "budget": 340.0,
+    "mass_cap_kg": 160000.0,
+    "leg_margin": 0.10,
+    "prop_cost_per_t": 0.5,
+    "supply_margin": 1.25,
+    "crew_day_kg": { "o2": 0.89, "water": 2.79, "food": 2.39 },
+    "start_data": 25
+  },
+  "parts": [
+    { "id": "cockpit", "name": "Cockpit", "stat": "shield", "options": [
+      { "name": "Capsule Mk1",    "mass": 3000, "power": -1.0, "cost": 30, "shield": 0.2, "info": "Light, thin radiation shielding" },
+      { "name": "Shielded Cabin", "mass": 4000, "power": -1.5, "cost": 45, "shield": 0.5, "info": "Water-wall shielding" },
+      { "name": "Command Module", "mass": 5500, "power": -2.0, "cost": 70, "shield": 0.8, "info": "Heavy shield, best crew safety" } ] },
+    { "id": "engine", "name": "Engine", "stat": "isp", "options": [
+      { "name": "Hypergolic",  "mass": 1500, "power": 0.0, "cost": 40,  "isp": 310, "info": "Isp ~310 s, storable, simple" },
+      { "name": "Methalox",    "mass": 2200, "power": 0.0, "cost": 70,  "isp": 360, "info": "Isp ~360 s, can be made on Mars" },
+      { "name": "Hydrolox",    "mass": 3000, "power": 0.0, "cost": 110, "isp": 450, "info": "Isp ~450 s, best efficiency" } ] },
+    { "id": "tank", "name": "Fuel Tank", "stat": "cap_t", "options": [
+      { "name": "Tank S 60 t",  "mass": 3600,  "power": 0.0, "cost": 20, "cap_t": 60,  "info": "Small tank" },
+      { "name": "Tank M 120 t", "mass": 7200,  "power": 0.0, "cost": 35, "cap_t": 120, "info": "Medium tank" },
+      { "name": "Tank L 200 t", "mass": 12000, "power": 0.0, "cost": 55, "cap_t": 200, "info": "Large tank" } ] },
+    { "id": "life", "name": "Life Support", "stat": "water_rec", "options": [
+      { "name": "Open-loop",     "mass": 800,  "power": -1.5, "cost": 20, "water_rec": 0.0,  "o2_rec": 0.0,  "info": "No recycling" },
+      { "name": "ECLSS Standard","mass": 1500, "power": -3.5, "cost": 55, "water_rec": 0.90, "o2_rec": 0.40, "info": "ISS-like water recovery ~90%" },
+      { "name": "ECLSS Advanced","mass": 2200, "power": -5.0, "cost": 90, "water_rec": 0.95, "o2_rec": 0.75, "info": "Near-closed loop (GAME value)" } ] },
+    { "id": "power", "name": "Power Generator", "stat": "gen", "options": [
+      { "name": "Solar Array S 6 kW",  "mass": 500,  "power": 6.0,  "cost": 15, "solar": true,  "info": "Cheap, hurt by dust and flares" },
+      { "name": "Solar Array L 12 kW", "mass": 900,  "power": 12.0, "cost": 28, "solar": true,  "info": "More power, same weakness" },
+      { "name": "Fission 10 kW",       "mass": 1500, "power": 10.0, "cost": 70, "solar": false, "info": "Kilopower-class, ignores sun events" } ] },
+    { "id": "storage", "name": "Storage", "stat": "cap_kg", "options": [
+      { "name": "Locker S 150 kg", "mass": 200, "power": 0.0, "cost": 10, "cap_kg": 150, "info": "Holds O2, water, food" },
+      { "name": "Locker M 300 kg", "mass": 300, "power": 0.0, "cost": 20, "cap_kg": 300, "info": "Holds O2, water, food" },
+      { "name": "Locker L 600 kg", "mass": 450, "power": 0.0, "cost": 35, "cap_kg": 600, "info": "Holds O2, water, food" } ] },
+    { "id": "comms", "name": "Comm Antenna", "stat": "quality", "options": [
+      { "name": "Low-gain",    "mass": 60,  "power": -0.2, "cost": 5,  "quality": 0.4, "info": "Low data rate" },
+      { "name": "Medium-gain", "mass": 150, "power": -0.5, "cost": 15, "quality": 0.7, "info": "Balanced" },
+      { "name": "High-gain",   "mass": 300, "power": -1.0, "cost": 30, "quality": 1.0, "info": "Full data return" } ] }
+  ],
+  "recommended": { "cockpit": 1, "engine": 1, "tank": 1, "life": 1, "power": 1, "storage": 1, "comms": 1 },
+  "missions": [
+    { "id": "moon", "name": "Moon - Lunar Ice Survey", "unlocked": true,
+      "brief": "Land near the south pole (Cabeus region), sample ice, return to the station. LCROSS measured 5.6 +/- 2.9 % water ice by mass there.",
+      "legs": [
+        { "id": "loi",     "name": "Lunar orbit insertion",   "dv": 0.9,  "fail": "Stranded" },
+        { "id": "landing", "name": "Powered descent",         "dv": 1.87, "fail": "Ship Destruction" },
+        { "id": "return",  "name": "Ascent + return to LEO",  "dv": 2.74, "fail": "Stranded" } ],
+      "days": { "transit_out": 3, "landing": 1, "surface": 3, "transit_back": 3 },
+      "base_data": 20 },
+    { "id": "mars", "name": "Mars - Gale Crater Base", "unlocked": false,
+      "brief": "Unlocked after the Moon. Full version: 4.3 km/s transfer, 0.9 capture, long transit, ISRU (MOXIE-style O2).",
+      "legs": [], "days": {}, "base_data": 0 }
+  ],
+  "events": [
+    { "id": "micro", "slot": "space", "title": "Micrometeoroid Swarm",
+      "text": "Sensors show a debris cloud crossing your path. Impact in 40 minutes.",
+      "choices": [
+        { "label": "Evasive burn", "result": "You dodge the cloud but spend propellant.", "fx": { "prop_pct": -0.03 } },
+        { "label": "Ride it out",  "result": "Impacts punch through the outer hull.",       "fx": { "hull": -55 } } ] },
+    { "id": "flare", "slot": "space", "title": "Solar Particle Event",
+      "text": "A solar flare is arriving. Radiation will spike and solar panels lose output.",
+      "choices": [
+        { "label": "Shelter in cabin (+1 day)", "result": "Crew waits it out in the shielded area.",     "fx": { "days": 1 } },
+        { "label": "Keep working",              "result": "Radiation exposure; panels degraded.",         "fx": { "rad_hull": 60, "power_mult": 0.7 } } ] },
+    { "id": "comms", "slot": "space", "title": "Communications Blackout",
+      "text": "The antenna loses lock with Earth. Data packets are dropping.",
+      "choices": [
+        { "label": "Realign antenna (+1 day)", "result": "Link restored, schedule slips.", "fx": { "days": 1 } },
+        { "label": "Wait for auto-recovery",   "result": "Link returns, but data was lost.", "fx": { "data_mult": 0.7 } } ] },
+    { "id": "leak", "slot": "space", "title": "Supply Module Leak",
+      "text": "Pressure drops in the storage locker. Consumables are venting.",
+      "choices": [
+        { "label": "Repair now (+1 day)", "result": "Patched quickly, small loss.",     "fx": { "days": 1, "supply_pct": -0.05 } },
+        { "label": "Seal the locker",     "result": "Leak stopped, a lot was lost.",     "fx": { "supply_pct": -0.30 } } ] },
+    { "id": "dust", "slot": "surface", "title": "Regolith Dust on Panels",
+      "text": "Charged lunar dust clings to panels and seals (Apollo crews reported this).",
+      "choices": [
+        { "label": "Wait and clean (+1 day)", "result": "Panels cleaned.",                         "fx": { "days": 1 } },
+        { "label": "Drill anyway",            "result": "Extra samples, but power is reduced.",    "fx": { "power_mult": 0.65, "data": 10 } } ] },
+    { "id": "ice", "slot": "surface", "title": "Ice Deposit Found",
+      "text": "Neutron data hints at a rich ice pocket in a permanently shadowed crater.",
+      "choices": [
+        { "label": "Drill it (+1 day)", "result": "Great science and extra water.", "fx": { "days": 1, "data": 20, "water_kg": 25 } },
+        { "label": "Skip it",           "result": "You stay on schedule.",           "fx": {} } ] },
+    { "id": "quake", "slot": "surface", "title": "Moonquake",
+      "text": "Apollo seismometers proved moonquakes are real. The lander shakes.",
+      "choices": [
+        { "label": "Abort EVA, secure lander (+1 day)", "result": "Safe, but lost time.",           "fx": { "days": 1 } },
+        { "label": "Continue EVA",                      "result": "More data, lander stressed.",     "fx": { "data": 10, "hull": -35 } } ] }
+  ],
+  "station_modules": [
+    { "id": "core",       "name": "Core Hub",     "parent": "",        "x": 640, "y": 380, "cost": 0,  "built": true,  "role": "core",    "effect": "Command center of the station." },
+    { "id": "habitat",    "name": "Habitat",      "parent": "core",    "x": 640, "y": 250, "cost": 0,  "built": true,  "role": "habitat", "effect": "Crew quarters. Crew of 3 lives here." },
+    { "id": "hangar",     "name": "Hangar",       "parent": "core",    "x": 420, "y": 380, "cost": 0,  "built": true,  "role": "hangar",  "effect": "Assemble your ship." },
+    { "id": "control",    "name": "Mission Ctrl", "parent": "core",    "x": 860, "y": 380, "cost": 0,  "built": true,  "role": "control", "effect": "Choose a mission and launch." },
+    { "id": "greenhouse", "name": "Greenhouse",   "parent": "habitat", "x": 500, "y": 150, "cost": 20, "built": false, "role": "bonus",   "effect": "+60 kg free storage capacity", "bonus": { "storage_kg": 60 } },
+    { "id": "lab",        "name": "Science Lab",  "parent": "habitat", "x": 780, "y": 150, "cost": 30, "built": false, "role": "bonus",   "effect": "Data x1.25", "bonus": { "data_mult": 1.25 } },
+    { "id": "cargo",      "name": "Cargo Bay",    "parent": "hangar",  "x": 280, "y": 290, "cost": 25, "built": false, "role": "bonus",   "effect": "+40 budget", "bonus": { "budget": 40 } },
+    { "id": "dock",       "name": "Heavy Dock",   "parent": "hangar",  "x": 280, "y": 470, "cost": 35, "built": false, "role": "bonus",   "effect": "+20 t lift limit", "bonus": { "mass_cap_kg": 20000 } },
+    { "id": "relay",      "name": "Relay Array",  "parent": "control", "x": 1000, "y": 290, "cost": 30, "built": false, "role": "bonus",  "effect": "+0.2 comm quality", "bonus": { "comms_q": 0.2 } },
+    { "id": "solarwing",  "name": "Solar Wing",   "parent": "control", "x": 1000, "y": 470, "cost": 30, "built": false, "role": "bonus",  "effect": "+2 kW free power", "bonus": { "power_kw": 2.0 } }
+  ]
+}

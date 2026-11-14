@@ -1,0 +1,19 @@
+# Godot cache / imports
+.godot/
+*.translation
+
+# Build output
+builds/
+*.pck
+*.zip
+*.exe
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local test output
+tests/out/
