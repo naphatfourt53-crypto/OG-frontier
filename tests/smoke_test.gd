@@ -40,6 +40,7 @@ func _run() -> void:
 	_test_t17()
 	_test_t18()
 	_test_farm_v2()
+	_test_ship_slots()
 	_test_golden()
 
 	if fails.is_empty():
@@ -304,6 +305,24 @@ func _test_t17() -> void:
 		gs.run["morale"] = 2
 		var allowed: String = gs.apply_choice(ice["choices"].size() - 1)
 		_check(not String(allowed).to_lower().contains("morale"), "morale choice allowed at 2")
+	gs.reset_all()
+
+# ---------- ship slots: three saved designs ----------
+func _test_ship_slots() -> void:
+	gs.reset_all()
+	_check(gs.design_slots.size() == 3, "three ship design slots exist")
+	_check(not gs.load_slot(0), "an empty slot cannot be loaded")
+	gs.design["engine"] = 2
+	gs.fuel_pct = 0.5
+	gs.save_slot(1)
+	_check(gs.slot_name(1).contains("Hydrolox"), "slot name shows the engine (got %s)" % gs.slot_name(1))
+	gs.design["engine"] = 0
+	gs.fuel_pct = 1.0
+	_check(gs.load_slot(1), "a saved slot loads")
+	_check(int(gs.design["engine"]) == 2 and absf(gs.fuel_pct - 0.5) < 0.001, "loading restores the design and fuel")
+	# A slot that went through JSON has float numbers; loading must still give ints.
+	gs.design_slots[2] = JSON.parse_string(JSON.stringify({"design": {"engine": 1.0, "cockpit": 2.0}, "fuel": 0.25}))
+	_check(gs.load_slot(2) and int(gs.design["engine"]) == 1, "a slot restored from JSON loads with int choices")
 	gs.reset_all()
 
 # ---------- greenhouse v2: crop choice, water and nutrient meters, alerts ----------

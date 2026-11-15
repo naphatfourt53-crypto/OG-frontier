@@ -52,12 +52,15 @@ var ore: Dictionary = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 var skip_save: bool = false
 # Set by Screen.go() so the next screen knows to fade in from black.
 var pending_fade: bool = false
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
+const SLOT_COUNT := 3
 
 var _activities: Dictionary = {}
 var harvest_count: int = 0
 var water_store: float = 0.0
 var nutrient_packs: int = 0
+# Three saved ship designs. Each slot is {} (empty) or {"design": {...}, "fuel": float}.
+var design_slots: Array = [{}, {}, {}]
 
 func _ready() -> void:
 	var f := FileAccess.open(DATA_PATH, FileAccess.READ)
@@ -94,6 +97,37 @@ func reset_all() -> void:
 	harvest_count = 0
 	water_store = float(farm_game()["water_kg_start"])
 	nutrient_packs = int(farm_game()["nutrient_packs_start"])
+	design_slots = [{}, {}, {}]
+
+# Name of the chosen option for one part, e.g. "Methalox" for the engine.
+func _option_name(d: Dictionary, part_id: String) -> String:
+	for p in data["parts"]:
+		if p["id"] == part_id:
+			return String(p["options"][clampi(int(d.get(part_id, 0)), 0, p["options"].size() - 1)]["name"])
+	return ""
+
+func slot_name(i: int) -> String:
+	var s: Dictionary = design_slots[i]
+	if s.is_empty():
+		return "Empty"
+	var d: Dictionary = s["design"]
+	return "%s + %s" % [_option_name(d, "cockpit"), _option_name(d, "engine")]
+
+func save_slot(i: int) -> void:
+	design_slots[i] = {"design": design.duplicate(), "fuel": fuel_pct}
+	save_game()
+
+# Copies a saved slot into the working design. Returns false for an empty slot.
+func load_slot(i: int) -> bool:
+	var s: Dictionary = design_slots[i]
+	if s.is_empty():
+		return false
+	design = {}
+	for k in s["design"]:
+		design[k] = int(s["design"][k])
+	fuel_pct = clampf(float(s["fuel"]), 0.0, 1.0)
+	save_game()
+	return true
 
 func activities() -> Dictionary:
 	if _activities.is_empty():
@@ -792,7 +826,8 @@ func save_game() -> void:
 		"history": history, "design": design, "fuel": fuel_pct, "seed": seed_value,
 		"eva": eva_seconds, "tutorial": tutorial_seen, "sound": sound_on,
 		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore,
-		"harvest": harvest_count, "water": water_store, "nutrient_packs": nutrient_packs}
+		"harvest": harvest_count, "water": water_store, "nutrient_packs": nutrient_packs,
+		"slots": design_slots}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -848,6 +883,15 @@ func load_game() -> void:
 		design[k] = int(d["design"][k])
 	for id in d.get("built", []):
 		built[id] = true
+	# v6 saves have no slots: they keep the empty defaults.
+	var slots = d.get("slots", [])
+	if typeof(slots) == TYPE_ARRAY and slots.size() == SLOT_COUNT:
+		for i in SLOT_COUNT:
+			var s = slots[i]
+			if typeof(s) == TYPE_DICTIONARY and s.has("design"):
+				design_slots[i] = s
+			else:
+				design_slots[i] = {}
 
 func _legacy_save_path() -> String:
 	var old := OS.get_user_data_dir().get_base_dir().path_join("OG-Frontier Prototype").path_join("ogfrontier_save.json")

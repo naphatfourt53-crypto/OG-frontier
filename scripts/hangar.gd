@@ -6,6 +6,7 @@ var stats: Control
 var info: Label
 var fuel_label: Label
 var card: Control
+var active_slot: int = 0
 
 func build() -> void:
 	star_seed = 31
@@ -161,7 +162,37 @@ func refresh_stats() -> void:
 		for t in a["issues"]:
 			line(y, "! " + String(t), bad)
 			y += 36
+	_slot_panel()
 	queue_redraw()
+
+# Three designs you can keep side by side. Click a slot to load it; SAVE stores the
+# design you are editing into that slot.
+func _slot_panel() -> void:
+	line(494.0, "SHIP SLOTS (3 designs)", Pix.WARN)
+	for i in GameState.SLOT_COUNT:
+		var yy := 518.0 + float(i) * 28.0
+		var idx := i
+		var b := Pix.btn_ghost(stats, "%d  %s" % [i + 1, GameState.slot_name(i)], Vector2(1010, yy), Vector2(176, 24),
+			func(): _slot_load(idx))
+		b.add_theme_font_size_override("font_size", 12)
+		if i == active_slot:
+			b.modulate = Color(0.6, 1.0, 0.75)
+		var s := Pix.btn(stats, "SAVE", Vector2(1192, yy), Vector2(70, 24), func(): _slot_save(idx))
+		s.add_theme_font_size_override("font_size", 12)
+
+func _slot_load(i: int) -> void:
+	if GameState.load_slot(i):
+		active_slot = i
+		info.text = "Loaded slot %d: %s." % [i + 1, GameState.slot_name(i)]
+		rebuild()
+	else:
+		info.text = "Slot %d is empty. Set up a ship, then press SAVE next to it." % (i + 1)
+
+func _slot_save(i: int) -> void:
+	GameState.save_slot(i)
+	active_slot = i
+	info.text = "Saved to slot %d: %s." % [i + 1, GameState.slot_name(i)]
+	refresh_stats()
 
 func draw_extra() -> void:
 	Pix.draw_ship(self, Vector2(800, 150), GameState.design, 6.0, false)
