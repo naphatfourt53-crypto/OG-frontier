@@ -5,7 +5,7 @@
 #  Requires Godot 4.7.2 with export templates installed.
 # ---------------------------------------------------------------------------
 param(
-    [string]$Version = "0.4.1",
+    [string]$Version = "0.5.0",
     [string]$Godot = "",
     [string]$LegacyRef = "legacy-v0.1.0",
     [switch]$SkipExport
