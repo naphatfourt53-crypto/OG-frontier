@@ -2,6 +2,39 @@
 
 รูปแบบอ้างอิง [Keep a Changelog](https://keepachangelog.com/) และ semantic versioning
 
+## [0.5.0] - 2026-11-15 (Phase 1: T10/T11/T17/T18)
+
+รอบแก้ตาม feedback ทีม + ไฟล์งาน T10–T19 (เฟส 1 จากทั้งหมด 3 เฟส)
+
+### Added
+
+- **T17 กิจกรรมระหว่างบิน**: เล็งดาวนำทาง 2 ครั้ง (ถือเมาส์ในวง 6 วิ), เผาเครื่อง
+  แก้ทาง (กดค้าง 3 วิ, nominal 6.37 m/s จาก Apollo 11), thermal roll (ข้าม = hull
+  -2%/วัน), ตารางออกกำลังกายลูกเรือ (0/1/2 ชม. กระทบ stamina ตอนถึง), มินิเกม
+  ทั้งหมดอ่านสัดส่วน trigger จาก `data/activities.json`
+- **T18 เดิน 3 รอบ**: จอพักระหว่างรอบ + stamina เติมเต็ม, งานย่อยบนผิว
+  (prep เลือกเครื่องมือ / document ถ่ายภาพ ×1.5 / core เจาะแท่งดิน ×2.0 /
+  deploy วางเครื่องวัด +3 แต้มทุกรอบถัดไป), มวลตัวอย่างเข้าระบบ rocket equation
+  ก่อน burn กลับ, จอทิ้งตัวอย่างก่อนขึ้นยาน
+- ระบบ **run plan** ใน `GameState` แทน STEPS ตายตัว + ค่า penalty dv เมื่อเผา
+  เครื่องไม่ครบ + morale gate เหตุการณ์ ("Rally the crew" ต้องเก็บเกี่ยวผักก่อน)
+- **Delayed comms** (Mars-class): เหตุการณ์มีเวลาจำกัด 15 วิ (ยังไม่ถูกใช้จนกว่า
+  ภารกิจ Mars มีข้อมูลในเฟส 3)
+- ไฟล์ทีมเข้า repo: `data/activities.json`, `data/destinations.json`,
+  `tools/check_physics.py` (45 checks, tags ครบทุกคีย์)
+- `tests/test_stamina_physics_farm.gd` (18 checks เทียบ AC ของ T10)
+
+### Changed
+
+- Save v5 (`harvest_count`); save เก่ายังโหลดได้
+- `finish_explore()` รับ `sample_kg/walks_log/deploys` (default ครบ, ของเดิมไม่พัง)
+- `Stamina.create()` รับ `capacity_mult` (ตารางออกกำลังกาย)
+- ป้าย "Real basis: Apollo 11" / "Game rule" บนทุกจอ T17/T18
+
+### Fixed
+
+- (ไม่มีบั๊กเก่า; smoke test ขยาย 161 → 191 checks)
+
 ## [0.4.1] - 2026-11-15
 
 แพ็กเกจสำหรับแจกทีม: แก้ปัญหาเปิดโปรเจกต์ผิดโฟลเดอร์, เครื่องเก่าเปิด exe ไม่ได้

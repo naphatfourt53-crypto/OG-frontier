@@ -143,7 +143,7 @@ godot --headless --path . -s tests/smoke_test.gd
   smart run: success=true score=1117 data=48
   weak run: reason=Stranded
   parity checked 5 design(s)
-PASS smoke_test (161 checks)
+PASS smoke_test (191 checks)
 ```
 
 เทสต์นี้ตรวจ: เปิดได้ทุกฉาก (รวม story, tutorial, crew cabin, terminal),

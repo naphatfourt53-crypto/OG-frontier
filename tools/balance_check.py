@@ -41,11 +41,12 @@ def analyze(design, fuel, food_store=0.0):
                 budget=C["budget"], mass_cap=C["mass_cap_kg"], total_need=sum(need.values()),
                 cap=PARTS[5]["options"][design["storage"]]["cap_kg"])
 
-def simulate(design, fuel, evs, choices, explore=80, food_store=0.0):
+def simulate(design, fuel, evs, choices, explore=80, food_store=0.0, dv_penalty=0.0):
     """evs: 3 event dicts; choices: 3 ints. Returns (success, reason).
     explore = science points from the EVA. Shown on the report and added to Data,
     but it never changes survival, so the default is just the expected value of a good walk.
-    food_store is ISS greenhouse food: it replaces packed food and rides in the galley."""
+    food_store is ISS greenhouse food: it replaces packed food and rides in the galley.
+    dv_penalty (m/s) is the T17 midcourse-burn shortfall carried into the next leg burn."""
     a = analyze(design, fuel, food_store); crew = C["crew"]; r = C["crew_day_kg"]
     life = PARTS[3]["options"][design["life"]]
     st = dict(a["pack"]); st["food"] += a["food_used"]; prop = a["prop"]; hull = 100.0; pm = 1.0
@@ -59,9 +60,9 @@ def simulate(design, fuel, evs, choices, explore=80, food_store=0.0):
         if net < 0: return "Power Failure"
         if st["o2"] < 0: return "Oxygen Depletion"
         if st["food"] < 0 or st["water"] < 0: return "Starvation"
-    def burn(leg):
+    def burn(leg, penalty=0.0):
         nonlocal prop
-        ve = a["isp"]*C["g0"]; dv = leg["dv"]*(1+C["leg_margin"])*1000
+        ve = a["isp"]*C["g0"]; dv = leg["dv"]*(1+C["leg_margin"])*1000 + penalty
         mi = a["dry"] + prop; need = mi*(1-math.exp(-dv/ve))
         if need > prop: return leg["fail"]
         prop -= need
@@ -87,7 +88,7 @@ def simulate(design, fuel, evs, choices, explore=80, food_store=0.0):
         elif step == "explore": f = None
         elif step == "event":
             f = event(simulate.k); simulate.k += 1
-        else: f = burn(L[step])
+        else: f = burn(L[step], dv_penalty if step == "loi" else 0.0)
         if f: simulate.k = 0; return False, f
     simulate.k = 0
     return True, ""
@@ -155,6 +156,12 @@ if __name__ == "__main__":
     print(f"SAMPLE DESIGN  mass {a['total']/1000:.1f} t  cost {a['cost']:.0f}/{C['budget']:.0f}  dv {dv:.2f} (need {need:.2f})  power net {a['gs']+a['go']-a['use']:+.1f} kW  launchable={a['ok_launch']}")
     b, r, why = evaluate(rec, fuel)
     print(f"  with smart choices wins in {b*100:.0f}% of event sets; with random choices {r*100:.0f}%;  failures: {why}")
+    print()
+    # T17 worst case: skipped nav + skipped midcourse burn -> 12.37 m/s penalty on leg:loi.
+    # The sample design must still win every easy event set with this penalty.
+    worst_penalty = 6.37 + 6.0
+    ok_worst, why_worst = simulate(rec, fuel, (space[0], surf[0], space[1]), (0, 0, 0), dv_penalty=worst_penalty)
+    print(f"T17 worst-case burn penalty {worst_penalty:.2f} m/s on loi: sample design {'still wins' if ok_worst else 'FAILS (' + why_worst + ')'}")
     print()
     # intended-failure demos
     demos = {

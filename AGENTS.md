@@ -24,7 +24,7 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 
 # 1. gate หลัก (ไม่ต้องมีหน้าต่าง)
 & $godot --headless --path . -s tests/smoke_test.gd
-#    ต้องจบด้วย: PASS smoke_test (161 checks)
+#    ต้องจบด้วย: PASS smoke_test (191 checks)
 
 # 1b. เทสต์ตัวเลข stamina/physics/farm (T10)
 & $godot --headless --path . -s tests/test_stamina_physics_farm.gd
@@ -36,7 +36,7 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 
 # 2. ภาพทุกหน้าจอ (ต้องมีหน้าต่างจริง)
 & $godot --path . -s tools/screenshots.gd --resolution 1280x720
-#    ผลลัพธ์: tests/out/01_menu.png ... 18_crew.png
+#    ผลลัพธ์: tests/out/01_menu.png ... 23_prep_panel.png
 
 # 2b. ตรวจเสียง (ต้องมีหน้าต่างจริง/อุปกรณ์เสียง)
 & $godot --path . -s tools/audio_check.gd
@@ -97,7 +97,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\package_team.ps1
 | `data/farm.json`, `data/stamina.json`, `data/physics.json` | ตัวเลขระบบใหม่ |
 | `tools/screenshots.gd` | harness ถ่ายภาพ (SceneTree script) |
 | `tools/audio_check.gd` | ตรวจเสียงทั้ง 7 ไฟล์ว่ามี stream และเล่นได้ |
-| `tests/smoke_test.gd` | gate 161 checks + parity กับ golden |
+| `tests/smoke_test.gd` | gate 191 checks + parity กับ golden |
 
 Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report → (hangar | station)`
 
@@ -126,7 +126,7 @@ Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report
 
 ## 6) Definition of done (ทุกงาน)
 
-- [ ] เกมเปิดได้ และ `PASS smoke_test (161 checks)` (จำนวน check อาจเพิ่มได้)
+- [ ] เกมเปิดได้ และ `PASS smoke_test (191 checks)` (จำนวน check อาจเพิ่มได้)
 - [ ] ถ้าแตะ UI: ถ่าย screenshot หน้าที่เกี่ยวข้องแล้วเปิดดูจริง ไม่มีข้อความล้น/ทับ
 - [ ] ถ้าแตะเสียง: `AUDIO OK (7 sounds)` จาก `tools/audio_check.gd`
 - [ ] ถ้าแตะสูตร/คะแนน: `balance_check.py` ตรงกับ GDScript และ commit `tests/golden.json`

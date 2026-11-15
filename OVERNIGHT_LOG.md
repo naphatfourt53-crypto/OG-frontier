@@ -199,3 +199,25 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 ```
 
 ถ้าทุกคำสั่งผ่าน (PASS / 11 ภาพ / AUDIO OK / ตัวเลขตรง / export EXIT=0) ถือว่าพร้อมเดโม
+
+## 9) v0.5.0 Phase 1 (T10/T11/T17/T18) - 15 Nov 2026
+
+Tasks done per docs/OPENCODE_TASKS_STAMINA_PHYSICS_FARM.md, order T10 -> T11 -> T17 -> T18.
+Plan: docs/superpowers/plans/2026-11-15-v0.5.0-phase1-t10-t11-t17-t18.md
+Spec: docs/superpowers/specs/2026-11-15-team-feedback-v0.5.0-design.md
+
+- T10: data files imported (activities/destinations), tools/check_physics.py passes (ALL PASS),
+  tests/test_stamina_physics_farm.gd asserts the same numbers (18 checks).
+- T11: verified against AC - everything already wired except the stamina-bar tooltip (added).
+- T17: run plan + nav sighting/burn/roll/schedule/morale (see CHANGELOG 0.5.0).
+- T18: 3 walks + rest, document/core/deploy, sample mass, jettison panel.
+
+Open question (logged, do not decide):
+- activities.json game.surface.eva_window_s = 75 s is informational. The per-walk window
+  stays the Settings slider (GameState.eva_seconds, default 60) per the team's answer.
+- Worst-case T17 burn penalty (12.37 m/s) added to leg:loi; balance_check.py proves the
+  sample design still wins.
+
+Pending phases (see the spec): phase 2 = walkable station + menu cleanup + tooltips +
+techbook + Data feedback; phase 3 = 8-mission campaign, probes, 1200-day deadline, farm
+screen, 3 ship design slots.
