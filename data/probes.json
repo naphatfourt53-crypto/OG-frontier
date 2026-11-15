@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "note": "Robotic campaign missions. Transit time and launch windows are NOT stored here: scripts/campaign.gd computes them from physics.json (real orbit constants, tag std; Hohmann and synodic are calc). Everything below is a game rule (tag game) unless marked real. Gas-giant and outer-planet numbers are game values until the team adds them to the Data Book; replace them then.",
+  "epoch_day": 1,
+  "campaign": {
+    "deadline_days": 12000,
+    "epilogue_days": 180,
+    "launch_station_days": 2,
+    "window_days": 30,
+    "keeping_pass_pct": 0.7,
+    "order": ["moon", "mars", "venus", "mercury", "jupiter", "saturn", "uranus", "neptune"]
+  },
+  "gas_depths": [
+    { "id": "shallow", "name": "Shallow skim", "gas_pts": 8,  "risk": 0.10, "info": "Low in the outer atmosphere. Small gain, almost no risk." },
+    { "id": "medium",  "name": "Mid-layer scoop", "gas_pts": 20, "risk": 0.35, "info": "Deeper, more gas per pass, the probe feels the pressure." },
+    { "id": "deep",    "name": "Deep dip", "gas_pts": 40, "risk": 0.65, "info": "Most gas, but one bad pass and the probe is lost." }
+  ],
+  "probes": [
+    { "id": "mars", "name": "Mars Rover and Sample Return", "target": "mars", "kind": "lander",
+      "minigame": "station_keeping", "data_cost": 50, "reward_data": 80, "reward_gas": 0, "hold_s": 20, "zone_pct": 0.18,
+      "info": "A robot rover lands by itself and collects rock samples. Light takes 3 to 22 minutes to reach Mars, so the landing must run without us.",
+      "comms_light_min": [3.0, 22.4], "tag": "real"},
+    { "id": "venus", "name": "Venus Lander", "target": "venus", "kind": "lander",
+      "minigame": "station_keeping", "data_cost": 35, "reward_data": 50, "reward_gas": 0, "hold_s": 20, "zone_pct": 0.14,
+      "info": "A short-lived lander in 465 C air and 90 times Earth pressure. The surface is very hostile.", "comms_light_min": null, "tag": "real"},
+    { "id": "mercury", "name": "Mercury Orbiter", "target": "mercury", "kind": "orbiter",
+      "minigame": "station_keeping", "data_cost": 25, "reward_data": 40, "reward_gas": 0, "hold_s": 20, "zone_pct": 0.14,
+      "info": "An orbiter that keeps its place near the Sun. Hot day side, cold night side.", "comms_light_min": null, "tag": "game"},
+    { "id": "jupiter", "name": "Jupiter Gas Probe", "target": "jupiter", "kind": "gas",
+      "minigame": "gas_scoop", "data_cost": 60, "reward_data": 60, "reward_gas": 1, "hold_s": 0, "zone_pct": 0,
+      "info": "Dips into the gas giant and scoops air for the smelter.", "comms_light_min": null, "tag": "game"},
+    { "id": "saturn", "name": "Saturn Gas Probe", "target": "saturn", "kind": "gas",
+      "minigame": "gas_scoop", "data_cost": 70, "reward_data": 60, "reward_gas": 1, "hold_s": 0, "zone_pct": 0,
+      "info": "Samples Saturn's upper air. Rings are a hazard on the way in.", "comms_light_min": null, "tag": "game"},
+    { "id": "uranus", "name": "Uranus Gas Probe", "target": "uranus", "kind": "gas",
+      "minigame": "gas_scoop", "data_cost": 80, "reward_data": 60, "reward_gas": 1, "hold_s": 0, "zone_pct": 0,
+      "info": "Ice giant. Very cold air, so the scoop needs more care.", "comms_light_min": null, "tag": "game"},
+    { "id": "neptune", "name": "Neptune Gas Probe", "target": "neptune", "kind": "gas",
+      "minigame": "gas_scoop", "data_cost": 80, "reward_data": 60, "reward_gas": 1, "hold_s": 0, "zone_pct": 0,
+      "info": "The farthest planet. Light is about 4 hours away; the probe runs by itself on arrival.", "comms_light_min": null, "tag": "game"}
+  ],
+  "tags": {
+    "epoch_day": "game", "campaign": "game", "gas_depths": "game", "probes": "game"
+  }
+}

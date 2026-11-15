@@ -225,7 +225,7 @@ func _cook() -> void:
 		info.text = "Not enough food in the ISS store."
 		return
 	GameState.food_store = maxf(0.0, GameState.food_store - 2.0)
-	GameState.day += 1
+	GameState.advance_days(1)
 	GameState.save_game()
 	info.text = "The crew eats together. Food store: %.1f kg. One day passes." % GameState.food_store
 	refresh()

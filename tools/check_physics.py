@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Mirror of scripts/physics.gd, stamina.gd, farm.gd in Python (Godot is not needed).
 Run: python3 tools/check_physics.py   -> exits 1 if any check fails.
 Every expected number below comes from the Game Data Book. If you change a JSON value,
@@ -91,9 +91,43 @@ check("Moon min temp K to C", DE["moon"]["temp_k_min"]-273.15, -178.15, 0.01)
 check("Relay shares sum (%)", sum(M["relay_percent_of_data"].values()), 100.0, 0.05)
 check("2 h Venera survival in days", DE["venus"]["lander_survival_max_hours"]/24, 0.0833, 0.0001)
 
+# ---- campaign mirror (scripts/campaign.gd): real transits and windows, 8-mission feasibility
+import itertools
+PR = load("probes")
+CP = PR["campaign"]
+def transit(pid): return planet_days("earth", PR_TARGET[pid])
+PR_TARGET = {p["id"]: p["target"] for p in PR["probes"]}
+for pid, want_days, tol in [("mars", 258.9, 1.0), ("mercury", 105.0, 1.5), ("venus", 146.0, 1.5),
+                            ("jupiter", 998.0, 2.0), ("saturn", 2214.0, 5.0), ("uranus", 5870.0, 15.0), ("neptune", 11204.0, 25.0)]:
+    check(f"campaign transit {pid} (d, Hohmann calc)", transit(pid), want_days, tol)
+for pid, want in [("mercury", 115.9), ("venus", 583.9), ("mars", 779.9), ("jupiter", 398.9),
+                  ("saturn", 378.1), ("uranus", 369.7), ("neptune", 367.5)]:
+    check(f"campaign synodic {pid} (d)", synodic(B["earth"]["period_days"], B[PR_TARGET[pid]]["period_days"]), want, 0.5)
+# Feasibility: launch at the start of a window (2 station days per launch), arrival after the real transit.
+# The Moon crew mission runs first (9 days). The campaign must finish before deadline - epilogue.
+def finish_day(order):
+    day = 10.0; end = 0.0
+    for pid in order:
+        S = synodic(B["earth"]["period_days"], B[PR_TARGET[pid]]["period_days"])
+        if (day - PR["epoch_day"]) % S >= CP["window_days"]:
+            day = PR["epoch_day"] + math.ceil((day - PR["epoch_day"]) / S) * S
+        arrive = day + math.ceil(transit(pid))
+        end = max(end, arrive)
+        day += CP["launch_station_days"]
+    return end
+ids = [p["id"] for p in PR["probes"]]
+best = min((finish_day(o), o) for o in itertools.permutations(ids))
+need = best[0] + CP["epilogue_days"]
+print(f"campaign best finish day {best[0]:.0f} via {best[1]}; with epilogue {need:.0f} vs deadline {CP['deadline_days']}")
+if need > CP["deadline_days"]:
+    fails.append("campaign deadline too short for the best order")
+    print("FAIL campaign: deadline too short for any order")
+else:
+    print("PASS campaign: deadline reachable with epilogue")
+
 # ---- tag coverage: every top-level data key must be covered by a tag (exact path or prefix)
 def covered(path, tags): return any(path == t or path.startswith(t + ".") for t in tags)
-for name, cfgd in (("stamina", ST), ("physics", PH), ("farm", FA), ("destinations", DE), ("activities", AC)):
+for name, cfgd in (("stamina", ST), ("physics", PH), ("farm", FA), ("destinations", DE), ("activities", AC), ("probes", PR)):
     tags = cfgd["tags"]
     def walk(obj, prefix):
         for k, v in obj.items():
@@ -105,3 +139,4 @@ for name, cfgd in (("stamina", ST), ("physics", PH), ("farm", FA), ("destination
     walk(cfgd, "")
 print("\nALL PASS" if not fails else f"\n{len(fails)} FAILED: {fails}")
 sys.exit(1 if fails else 0)
+

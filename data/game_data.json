@@ -92,15 +92,7 @@
         { "id": "return",  "name": "Ascent + return to LEO",  "dv": 2.74, "fail": "Stranded",
           "note": "The ascent stage lifts off and rendezvouses with the command module in lunar orbit." } ],
       "days": { "transit_out": 3, "landing": 1, "surface": 3, "transit_back": 3 },
-      "base_data": 20 },
-    { "id": "mars", "name": "Mars - Gale Crater Base", "unlocked": false,
-      "brief": "Unlocked after the Moon. Full version: 4.3 km/s transfer, 0.9 capture, long transit, ISRU (MOXIE-style O2).",
-      "environment": "Thin CO2 atmosphere (6.36 mbar), 0.38 g, average -63 C. Solar output is about 43% of Earth's.",
-      "hazards": ["Long transit: 259 days each way plus a 454-day return window", "Global dust storms reduce solar power", "Perchlorates in the soil are toxic to plants and people"],
-      "resources": ["Water ice in the polar caps and subsurface", "Atmospheric CO2 for MOXIE-style oxygen", "Iron oxides and hydrated minerals"],
-      "gear": ["Fission power or oversized solar arrays", "Radiation shelter for the long cruise", "Closed-loop life support for a 900-day round trip"],
-      "scout_note": "This prototype ends at the Moon; the Mars dossier is data-only so the team can show the plan.",
-      "legs": [], "days": {}, "base_data": 0 }
+      "base_data": 20 }
   ],
   "events": [
     { "id": "micro", "slot": "space", "title": "Micrometeoroid Swarm",

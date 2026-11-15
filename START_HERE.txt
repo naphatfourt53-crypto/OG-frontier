@@ -16,11 +16,11 @@ LAST LAUNCH / OG-FRONTIER v0.4.1
 2) เปิด OGFrontier.exe แล้ว Windows ไม่ให้เปิด
    - แตก ZIP ให้ครบก่อน อย่าเปิดจากใน ZIP
    - ถ้า SmartScreen ขึ้น "Windows protected your PC"
-     คลิก More info -> Run anyway
+	 คลิก More info -> Run anyway
    - ถ้าขึ้น "Unable to initialize video driver" หรือจอดำ
-     สคริปต์จะลอง OpenGL 3.3 ให้เอง (กด OK ที่กล่องข้อความก่อน)
-     ถ้ายังไม่ได้ ลอง RUN_LAST_LAUNCH_SAFE.bat
-     ถ้ายังไม่ได้อีก ให้ใช้เวอร์ชันเว็บ (PLAY_WEB.bat) ซึ่งไม่ต้องใช้ไดรเวอร์การ์ดจอ
+	 สคริปต์จะลอง OpenGL 3.3 ให้เอง (กด OK ที่กล่องข้อความก่อน)
+	 ถ้ายังไม่ได้ ลอง RUN_LAST_LAUNCH_SAFE.bat
+	 ถ้ายังไม่ได้อีก ให้ใช้เวอร์ชันเว็บ (PLAY_WEB.bat) ซึ่งไม่ต้องใช้ไดรเวอร์การ์ดจอ
 
 3) ดับเบิลคลิก index.html แล้วเกมไม่ขึ้น
    ถูกต้องแล้ว - เบราว์เซอร์โหลดไฟล์ .pck / .wasm จาก file:// ไม่ได้

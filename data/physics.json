@@ -10,10 +10,14 @@
     "seconds_per_day": 86400.0
   },
   "bodies": {
+    "mercury": { "a_au": 0.387098, "period_days": 87.969 },
     "venus":   { "a_au": 0.72333,  "period_days": 224.701 },
     "earth":   { "a_au": 1.0,      "period_days": 365.256 },
     "mars":    { "a_au": 1.52368,  "period_days": 686.98 },
-    "jupiter": { "a_au": 5.20289,  "period_days": 4332.59 }
+    "jupiter": { "a_au": 5.20289,  "period_days": 4332.59 },
+    "saturn":  { "a_au": 9.5549,   "period_days": 10759.22 },
+    "uranus":  { "a_au": 19.2184,  "period_days": 30688.5 },
+    "neptune": { "a_au": 30.11,    "period_days": 60182.0 }
   },
   "reference_trips": {
     "earth_moon_hohmann_days": 4.98,

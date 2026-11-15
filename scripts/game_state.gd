@@ -52,8 +52,12 @@ var ore: Dictionary = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 var skip_save: bool = false
 # Set by Screen.go() so the next screen knows to fade in from black.
 var pending_fade: bool = false
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 const SLOT_COUNT := 3
+# 1 crewed Moon mission + 7 robotic probes (Mars, Venus, Mercury, Jupiter, Saturn, Uranus, Neptune).
+const TOTAL_MISSIONS := 8
+# Campaign state. done: {mission_id: day it was completed}. probes: {probe_id: {state, launch_day, arrive_day}}.
+var campaign: Dictionary = {}
 
 var _activities: Dictionary = {}
 var harvest_count: int = 0
@@ -98,6 +102,114 @@ func reset_all() -> void:
 	water_store = float(farm_game()["water_kg_start"])
 	nutrient_packs = int(farm_game()["nutrient_packs_start"])
 	design_slots = [{}, {}, {}]
+	campaign_reset()
+
+# ---------- campaign: clock, probes, deadline ----------
+func campaign_reset() -> void:
+	campaign = {"probes": {}, "done": {}, "gas": 0, "won": false, "lost": false, "end_day": 0, "log": []}
+	for id in Campaign.probe_ids():
+		campaign["probes"][id] = {"state": "idle", "launch_day": 0, "arrive_day": 0}
+
+func campaign_log(text: String) -> void:
+	var entries: Array = campaign["log"]
+	entries.append("Day %d: %s" % [day, text])
+	while entries.size() > 40:
+		entries.pop_front()
+
+# The only way the Earth clock moves. Probes that have arrived become pending.
+func advance_days(n: int) -> void:
+	if n <= 0:
+		return
+	day += n
+	for id in campaign["probes"]:
+		var st: Dictionary = campaign["probes"][id]
+		if String(st["state"]) == "transit" and day >= int(st["arrive_day"]):
+			st["state"] = "pending"
+			campaign_log("%s arrived. Run the encounter in Probe Control." % Campaign.probe(id)["name"])
+	_check_end()
+
+func campaign_over() -> bool:
+	return bool(campaign.get("won", false)) or bool(campaign.get("lost", false))
+
+# Win: all 8 missions completed, then the 180-day epilogue has passed.
+# Lose: the deadline arrives first.
+func _check_end() -> void:
+	if campaign_over():
+		return
+	var done: Dictionary = campaign["done"]
+	if done.size() >= TOTAL_MISSIONS:
+		var last := 0
+		for k in done:
+			last = maxi(last, int(done[k]))
+		campaign["end_day"] = last + int(Campaign.epilogue_days())
+		if day >= int(campaign["end_day"]):
+			campaign["won"] = true
+			campaign_log("All eight missions done. The epilogue is over: Earth is stable.")
+			return
+	if day >= int(Campaign.deadline_days()):
+		campaign["lost"] = true
+		campaign_log("The Earth deadline has passed with %d of %d missions done." % [done.size(), TOTAL_MISSIONS])
+
+func days_left() -> int:
+	return maxi(0, int(Campaign.deadline_days()) - day)
+
+# Launch a probe in its window. It costs Data and station days, then it flies for the real transit.
+func launch_probe(id: String) -> Dictionary:
+	var pr: Dictionary = Campaign.probe(id)
+	if pr.is_empty():
+		return {"ok": false, "text": "Unknown probe."}
+	if not campaign["done"].has("moon"):
+		return {"ok": false, "text": "Finish the Moon mission first. The probe office opens after it."}
+	if campaign_over():
+		return {"ok": false, "text": "The campaign is over."}
+	var st: Dictionary = campaign["probes"][id]
+	if String(st["state"]) != "idle" and String(st["state"]) != "lost":
+		return {"ok": false, "text": "%s is already %s." % [pr["name"], String(st["state"])]}
+	if not Campaign.window_open(id, float(day)):
+		return {"ok": false, "text": "No launch window yet. The next window opens on day %d." % int(Campaign.next_window(id, float(day)))}
+	var cost := int(pr["data_cost"])
+	if station_data < cost:
+		return {"ok": false, "text": "Not enough Data: need %d, have %d. Earn Data by completing missions." % [cost, station_data]}
+	station_data -= cost
+	var transit := int(ceilf(Campaign.transit_days(id)))
+	campaign["probes"][id] = {"state": "transit", "launch_day": day, "arrive_day": day + transit}
+	campaign_log("Launched %s, arriving in %d days." % [pr["name"], transit])
+	advance_days(int(Campaign.cfg()["campaign"]["launch_station_days"]))
+	save_game()
+	return {"ok": true, "text": "Launched %s. It arrives on day %d (%d days of flight)." % [pr["name"], int(campaign["probes"][id]["arrive_day"]), transit]}
+
+# Jump to the next launch window for this probe (the clock moves forward).
+func wait_for_window(id: String) -> Dictionary:
+	var nxt := int(Campaign.next_window(id, float(day)))
+	if nxt <= day:
+		return {"ok": true, "text": "The window is open now."}
+	advance_days(nxt - day)
+	save_game()
+	return {"ok": true, "text": "Waited %d days. The window is open." % (nxt - day)}
+
+func wait_days(n: int) -> Dictionary:
+	advance_days(n)
+	save_game()
+	return {"ok": true, "text": "Waited %d days." % n}
+
+# The player finished the encounter. outcome = {"success": bool, "gas": int, "text": String}.
+func resolve_probe(id: String, outcome: Dictionary) -> Dictionary:
+	var st: Dictionary = campaign["probes"][id]
+	if String(st["state"]) != "pending":
+		return {"ok": false, "text": "No encounter is waiting for this probe."}
+	var pr: Dictionary = Campaign.probe(id)
+	if bool(outcome["success"]):
+		st["state"] = "done"
+		station_data += int(pr["reward_data"])
+		campaign["gas"] = int(campaign["gas"]) + int(outcome.get("gas", 0))
+		campaign["done"][id] = day
+		campaign_log("%s: encounter success. +%d Data." % [pr["name"], int(pr["reward_data"])])
+		_check_end()
+	else:
+		st["state"] = "lost"
+		campaign_log("%s was lost in the encounter. The next launch window comes one synodic period later (%d days)." % [pr["name"], int(Campaign.synodic_days(id))])
+	save_game()
+	return {"ok": bool(outcome["success"]), "text": String(outcome["text"])}
 
 # Name of the chosen option for one part, e.g. "Methalox" for the engine.
 func _option_name(d: Dictionary, part_id: String) -> String:
@@ -189,6 +301,8 @@ func smelter_points() -> int:
 	for k in ore:
 		if data["moon_resources"].has(k):
 			total += int(ore[k]) * int(data["moon_resources"][k]["pts"])
+	# Gas from the gas-giant probes counts for the Helios smelter too.
+	total += int(campaign.get("gas", 0))
 	return total
 
 func smelter_pct() -> float:
@@ -325,7 +439,7 @@ func tend_plot(days: float = 1.0) -> Dictionary:
 			float(cfg["default_photoperiod_h"]), f)
 		p["water_pct"] = maxf(0.0, float(p["water_pct"]) - float(g["water_meter_drop_per_day"]))
 		p["nutrient_pct"] = maxf(0.0, float(p["nutrient_pct"]) - float(g["nutrient_meter_drop_per_day"]))
-	day += n
+	advance_days(n)
 	save_game()
 	var state := "READY TO HARVEST" if Farm.crop_ready(p) else "growing"
 	return {"ok": true, "text": "%s: day %d of %d (%s). %s" % [
@@ -350,12 +464,12 @@ func study_samples() -> Dictionary:
 	if has_module("lab"):
 		gain = int(round(gain * 1.25))
 	station_data += gain
-	day += 1
+	advance_days(1)
 	save_game()
 	return {"ok": true, "text": "Studied the samples (+%d Data, +1 day)." % gain}
 
 func rest_day() -> Dictionary:
-	day += 1
+	advance_days(1)
 	save_game()
 	return {"ok": true, "text": "Crew rested. The ISS clock advances one day."}
 
@@ -786,7 +900,7 @@ func finalize() -> void:
 	if run.has("done"):
 		return
 	run["done"] = true
-	day += int(round(float(run.get("day", 0.0))))
+	advance_days(int(round(float(run.get("day", 0.0)))))
 	var a: Dictionary = run["a"]
 	var gain := float(run["data_raw"]) * float(run["data_mult"]) * (0.5 + 0.5 * float(a["comm_q"])) * data_mult_bonus()
 	run["data_gain"] = int(round(gain))
@@ -798,8 +912,10 @@ func finalize() -> void:
 		run["score"] = int(run["data_gain"] * 2)
 	station_data += int(run["data_gain"])
 	best_score = maxi(best_score, int(run["score"]))
-	if run["success"] and run["mission"] == "moon":
+	if run["success"] and run["mission"] == "moon" and not campaign["done"].has("moon"):
+		campaign["done"]["moon"] = day
 		mars_unlocked = true
+		_check_end()
 	history.append({"score": run["score"], "success": run["success"], "reason": run["reason"], "seed": seed_value})
 	while history.size() > 6:
 		history.pop_front()
@@ -827,7 +943,7 @@ func save_game() -> void:
 		"eva": eva_seconds, "tutorial": tutorial_seen, "sound": sound_on,
 		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore,
 		"harvest": harvest_count, "water": water_store, "nutrient_packs": nutrient_packs,
-		"slots": design_slots}
+		"slots": design_slots, "campaign": campaign}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -892,6 +1008,20 @@ func load_game() -> void:
 				design_slots[i] = s
 			else:
 				design_slots[i] = {}
+	# v7 saves have no campaign. Their Moon success was stored in the old "mars" flag.
+	var camp = d.get("campaign", null)
+	campaign_reset()
+	if typeof(camp) == TYPE_DICTIONARY and camp.has("probes") and camp.has("done"):
+		var fresh := campaign
+		for k in fresh:
+			if not camp.has(k):
+				camp[k] = fresh[k]
+		for id in Campaign.probe_ids():
+			if not camp["probes"].has(id):
+				camp["probes"][id] = {"state": "idle", "launch_day": 0, "arrive_day": 0}
+		campaign = camp
+	elif mars_unlocked:
+		campaign["done"]["moon"] = day
 
 func _legacy_save_path() -> String:
 	var old := OS.get_user_data_dir().get_base_dir().path_join("OG-Frontier Prototype").path_join("ogfrontier_save.json")

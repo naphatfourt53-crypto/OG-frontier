@@ -41,6 +41,7 @@ func _run() -> void:
 	_test_t18()
 	_test_farm_v2()
 	_test_ship_slots()
+	_test_campaign()
 	_test_golden()
 
 	if fails.is_empty():
@@ -203,11 +204,17 @@ func _test_new_systems() -> void:
 	_check(Stamina.eva_food_kcal(60.0) > 0.0, "EVA time converts to extra food energy")
 
 	# Dossiers must be complete for both mission files.
-	for mid in ["moon", "mars"]:
+	for mid in ["moon"]:
 		var m: Dictionary = gs.mission(mid)
 		for key in ["environment", "hazards", "resources", "gear", "scout_note"]:
 			_check(m.has(key) and not (typeof(m[key]) == TYPE_ARRAY and m[key].is_empty()),
 				"mission %s dossier has %s" % [mid, key])
+	# Every robotic probe has a name, a target and a description.
+	for pid in Campaign.probe_ids():
+		var pdef: Dictionary = Campaign.probe(pid)
+		_check(not String(pdef.get("name", "")).is_empty() and not String(pdef.get("info", "")).is_empty()
+			and OrbitMath.cfg()["bodies"].has(String(pdef.get("target", ""))),
+			"probe %s has name, info and a known target" % pid)
 	_check(gs.SAVE_VERSION >= 4, "save version covers story/day/food/prep fields")
 	gs.reset_all()
 
@@ -305,6 +312,60 @@ func _test_t17() -> void:
 		gs.run["morale"] = 2
 		var allowed: String = gs.apply_choice(ice["choices"].size() - 1)
 		_check(not String(allowed).to_lower().contains("morale"), "morale choice allowed at 2")
+	gs.reset_all()
+
+# ---------- campaign: transit, windows, arrivals, encounters, win and lose ----------
+func _test_campaign() -> void:
+	gs.reset_all()
+	_check(absf(Campaign.transit_days("mars") - 258.9) < 1.0, "Mars transit matches Hohmann (%.1f d)" % Campaign.transit_days("mars"))
+	_check(absf(Campaign.synodic_days("jupiter") - 398.9) < 0.5, "Jupiter synodic period (%.1f d)" % Campaign.synodic_days("jupiter"))
+	_check(Campaign.window_open("mercury", 1.0), "a window is open on day 1")
+	_check(not Campaign.window_open("mercury", 40.0), "the window is closed 40 days after the opening")
+	_check(absf(Campaign.next_window("mercury", 40.0) - (1.0 + Campaign.synodic_days("mercury"))) < 0.01,
+		"next window after day 40 is one synodic period later")
+	gs.station_data = 500
+	_check(not gs.launch_probe("mars")["ok"], "a probe cannot launch before the Moon mission is done")
+	gs.campaign["done"]["moon"] = 1
+	gs.day = 1
+	var before: int = gs.station_data
+	var r: Dictionary = gs.launch_probe("mars")
+	_check(bool(r["ok"]), "Mars probe launches in its window once the Moon is done")
+	_check(gs.station_data == before - int(Campaign.probe("mars")["data_cost"]), "launching costs the probe's Data")
+	_check(gs.day == 1 + int(Campaign.cfg()["campaign"]["launch_station_days"]), "launch takes its station days")
+	var arrive := int(gs.campaign["probes"]["mars"]["arrive_day"])
+	_check(String(gs.campaign["probes"]["mars"]["state"]) == "transit", "the probe is in transit after launch")
+	gs.advance_days(arrive - gs.day - 1)
+	_check(String(gs.campaign["probes"]["mars"]["state"]) == "transit", "the probe is still flying one day before arrival")
+	gs.advance_days(1)
+	_check(String(gs.campaign["probes"]["mars"]["state"]) == "pending", "the probe becomes pending on arrival")
+	var data_before: int = gs.station_data
+	_check(bool(gs.resolve_probe("mars", Campaign.keeping_outcome(0.9))["ok"]), "a good landing completes the probe")
+	_check(gs.station_data == data_before + int(Campaign.probe("mars")["reward_data"]), "completion pays the probe's Data")
+	_check(gs.campaign["done"].has("mars"), "completed probes are recorded")
+	# Lose path: a failed encounter loses the probe and it can fly again in a later window.
+	gs.campaign["done"].erase("mars")
+	gs.campaign["probes"]["venus"] = {"state": "pending", "launch_day": 0, "arrive_day": 0}
+	_check(not bool(gs.resolve_probe("venus", Campaign.keeping_outcome(0.2))["ok"]), "a failed encounter reports failure")
+	_check(String(gs.campaign["probes"]["venus"]["state"]) == "lost", "a failed encounter loses the probe")
+	# Mini-game rules.
+	_check(Campaign.keeping_outcome(0.7)["success"] and not Campaign.keeping_outcome(0.69)["success"], "station-keeping pass line is 70%")
+	_check(Campaign.scoop_outcome("shallow", 0.5)["success"] and not Campaign.scoop_outcome("deep", 0.3)["success"],
+		"a gas scoop passes when the roll beats the depth's risk")
+	_check(int(Campaign.scoop_outcome("medium", 0.9)["gas"]) == 20, "a safe medium scoop returns the depth's gas")
+	# Win: all 8 done, then the epilogue passes.
+	gs.reset_all()
+	gs.station_data = 0
+	for id in Campaign.probe_ids() + ["moon"]:
+		gs.campaign["done"][id] = 1000
+	gs.day = 1000
+	gs.advance_days(0)
+	_check(not gs.campaign_over(), "all missions done but the epilogue has not ended yet")
+	gs.advance_days(int(Campaign.epilogue_days()))
+	_check(bool(gs.campaign["won"]), "the campaign is won after all missions and the 180-day epilogue")
+	# Lose: deadline reached first.
+	gs.reset_all()
+	gs.advance_days(int(Campaign.deadline_days()))
+	_check(bool(gs.campaign["lost"]) and not bool(gs.campaign["won"]), "the campaign is lost when the deadline passes")
 	gs.reset_all()
 
 # ---------- ship slots: three saved designs ----------

@@ -132,7 +132,7 @@ Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report
 - [ ] ถ้าแตะสูตร/คะแนน: `balance_check.py` ตรงกับ GDScript และ commit `tests/golden.json`
 - [ ] ถ้าแตะ save: เซฟเก่ายังโหลดได้ (มีเทสต์ใน smoke test)
 - [ ] ถ้าแตะ build/packaging: รัน `tools/package_team.ps1` แล้วแตก ZIP ตรวจว่า
-      `project.godot` อยู่บนสุด, exe เปิดได้, และ Web มี `PLAY_WEB.bat` + `index.wasm`
+	  `project.godot` อยู่บนสุด, exe เปิดได้, และ Web มี `PLAY_WEB.bat` + `index.wasm`
 - [ ] อัปเดต `CHANGELOG.md` และ `OVERNIGHT_LOG.md` (ถ้าเป็นงานคืนนี้)
 - [ ] commit message รูปแบบ `feat|fix|docs|test|chore(scope): ...`
 
