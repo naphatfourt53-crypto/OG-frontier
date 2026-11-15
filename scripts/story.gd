@@ -1,5 +1,8 @@
 extends Screen
-# Screen 0 - Story briefing. Shown once before the first visit to the ISS.
+# Screen 0 - Story briefing. Shown once, automatically, on the first visit to the ISS
+# (embedded as an overlay by station.gd). The STORY button in the station re-opens it.
+signal closed
+var embedded: bool = false
 # Establishes why the station exists: Earth is overheating and the Helios smelter
 # needs ore from every world. English text only, like the rest of the game.
 
@@ -81,6 +84,10 @@ func _next() -> void:
 func _begin() -> void:
 	GameState.story_seen = true
 	GameState.save_game()
+	if embedded:
+		closed.emit()
+		queue_free()
+		return
 	go("station")
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -91,7 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		super._unhandled_input(event)
 
 func back_scene() -> String:
-	return "menu"
+	return "" if embedded else "station"
 
 func draw_extra() -> void:
 	# Earth photo, heavily shaded so the text panel stays readable.

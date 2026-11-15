@@ -168,8 +168,8 @@ func show_nav(idx: int) -> void:
 	_dim_activity()
 	Pix.panel(activity_box, Vector2(240, 110), Vector2(800, 480))
 	Pix.lbl(activity_box, "NAVIGATION SIGHTING  %d/2" % (idx + 1), Vector2(270, 130), Vector2(740, 36), 26, Pix.WARN)
-	Pix.lbl(activity_box, "Star sighting fixes the ship's position before the midcourse burn.",
-		Vector2(270, 172), Vector2(740, 24), 15, Pix.TEXT)
+	Pix.lbl(activity_box, "HOW TO: move the mouse so the cursor stays INSIDE the moving green circle. The blue bar fills over 6 seconds. More time inside = a more accurate position fix.",
+		Vector2(270, 168), Vector2(740, 40), 14, Pix.TEXT)
 	Pix.lbl(activity_box, "Real basis: Apollo 11 navigation sightings (about 6 h and 24 h into the coast). Game rule: 6 s window.",
 		Vector2(270, 200), Vector2(740, 20), 12, Pix.DIM)
 	nav_dot = ColorRect.new()
@@ -197,8 +197,8 @@ func show_burn() -> void:
 	_dim_activity()
 	Pix.panel(activity_box, Vector2(240, 130), Vector2(800, 440))
 	Pix.lbl(activity_box, "MIDCOURSE BURN", Vector2(270, 150), Vector2(740, 36), 26, Pix.WARN)
-	Pix.lbl(activity_box, "Nominal correction: 6.37 m/s. Hold the button for the full burn - cutting it short leaves the next burn to make up the difference.",
-		Vector2(270, 192), Vector2(740, 44), 15, Pix.TEXT)
+	Pix.lbl(activity_box, "HOW TO: hold SPACE (or the left mouse button) until the orange bar is full, then let go. Nominal correction: 6.37 m/s. Letting go early leaves the difference to the next burn. Doing nothing skips the burn.",
+		Vector2(270, 192), Vector2(740, 44), 14, Pix.TEXT)
 	Pix.lbl(activity_box, "Real basis: Apollo 11 midcourse correction (20.9 ft/s). Game rule: 3 s hold.",
 		Vector2(270, 236), Vector2(740, 20), 12, Pix.DIM)
 	burn_bar = ColorRect.new()
@@ -222,6 +222,8 @@ func _render_schedule() -> void:
 	_dim_activity()
 	Pix.panel(activity_box, Vector2(200, 110), Vector2(880, 500))
 	Pix.lbl(activity_box, "PRE-FLIGHT CHECKLIST", Vector2(230, 130), Vector2(820, 36), 26, Pix.WARN)
+	Pix.lbl(activity_box, "GUIDE: set the two choices below, then press LAUNCH. The flight log then runs day by day. You will be asked to act at the star sightings, the midcourse burn and some events.",
+		Vector2(230, 160), Vector2(820, 22), 12, Pix.TEXT)
 	Pix.lbl(activity_box, "CREW EXERCISE", Vector2(230, 184), Vector2(400, 24), 16, Pix.WARN)
 	Pix.lbl(activity_box, "ISS crews average 2 h of exercise a day. Fewer hours lower EVA stamina on arrival (game rule).",
 		Vector2(230, 210), Vector2(820, 30), 13, Pix.DIM)

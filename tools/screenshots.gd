@@ -26,6 +26,7 @@ func _run() -> void:
 	gs.load_sample_design()
 	gs.seed_value = 424242
 	gs.tutorial_seen = true  # keep screen 02 clean; the overlay gets its own shot
+	gs.story_seen = true  # the first-visit story plays on the station; its own shot is 12_story
 	# Show the new station support in the gallery: some ISS food and gear already loaded.
 	gs.station_data = 80
 	gs.food_store = 8.0
@@ -157,6 +158,28 @@ func _run() -> void:
 	await _frames(2)
 	await _capture("18_crew")
 	await _close(flight2)
+
+	# Phase 2: the walkable station with a hover card, the first-visit story, and the Tech Book tabs.
+	gs.story_seen = true  # reset_all() above cleared it; the hover shot must not open the story
+	var st_node = await _open("station")
+	st_node.close_tutorial()
+	st_node._show_hover("Greenhouse", "NOT BUILT. Cost 20 Data - you have 80. Press E or click to build.", Pix.GOOD)
+	await _frames(2)
+	await _capture("24_station_hover")
+	st_node.hover_box.visible = false
+	await _close(st_node)
+	gs.story_seen = false
+	var st_story = await _open("station")
+	await _frames(2)
+	await _capture("25_station_story_first_visit")
+	await _close(st_story)
+	gs.story_seen = true
+	for tab_name in ["STATION", "SHIP", "FLIGHT", "EVA", "MISSIONS"]:
+		var tb = await _open("techbook")
+		tb._set_tab(tab_name)
+		await _frames(2)
+		await _capture("26_techbook_" + tab_name.to_lower())
+		await _close(tb)
 
 	if failures.is_empty():
 		print("SCREENSHOTS OK -> ", ProjectSettings.globalize_path(OUT_DIR))

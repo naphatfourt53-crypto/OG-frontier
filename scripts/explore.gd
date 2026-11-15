@@ -108,7 +108,8 @@ func _show_prep_panel() -> void:
 	overlay.add_child(dim)
 	Pix.panel(overlay, Vector2(300, 130), Vector2(680, 440))
 	Pix.lbl(overlay, "EVA PREP - CHOOSE 2 TOOLS", Vector2(330, 148), Vector2(620, 36), 26, Pix.WARN)
-	Pix.lbl(overlay, "Task names: Artemis III plan. Numbers: Game rule.", Vector2(330, 188), Vector2(620, 22), 12, Pix.DIM)
+	Pix.lbl(overlay, "GUIDE: WASD walks. Walk onto ore to pick it up. F photographs an item (x1.5 points, do it before pickup). E drills a rock or places an instrument at a post. SPACE returns to the lander. Task names: Artemis III plan. Numbers: Game rule.",
+		Vector2(330, 184), Vector2(620, 40), 12, Pix.TEXT)
 	var descs := {
 		"camera": "CAMERA - photograph a sample site before collecting (x1.5 points)",
 		"drill": "DRILL - core samples at rock outcrops (x2.0 points, hard pace)",

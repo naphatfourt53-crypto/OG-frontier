@@ -9,14 +9,13 @@ func build() -> void:
 	Pix.lbl(self, "OG-Frontier  |  Space Mission Design Game (prototype)", Vector2(84, 175), Vector2(700, 30), 18, Pix.DIM)
 	Pix.lbl(self, "2031. Heat domes and failed harvests have made Earth nearly uninhabitable. The ISS is humanity's last home. Design a ship, pick a mission, survive the trip, and bring back the ore that finishes the Helios smelter.",
 		Vector2(84, 225), Vector2(560, 100), 18, Pix.TEXT)
+	# The menu is kept empty on purpose: the guide (story, how to play) lives inside the ISS.
 	Pix.btn(self, "START", Vector2(84, 338), Vector2(260, 50), start_game)
-	Pix.btn(self, "HOW TO PLAY", Vector2(84, 394), Vector2(125, 40), func(): go("tutorial"))
-	Pix.btn(self, "STORY", Vector2(219, 394), Vector2(125, 40), func(): go("story"))
-	Pix.btn(self, "SETTINGS", Vector2(84, 440), Vector2(260, 40), open_settings)
-	Pix.btn(self, "RESET SAVE", Vector2(84, 486), Vector2(260, 40), func():
+	Pix.btn(self, "SETTINGS", Vector2(84, 404), Vector2(260, 40), open_settings)
+	Pix.btn(self, "RESET SAVE", Vector2(84, 450), Vector2(260, 40), func():
 		GameState.wipe_save()
 		go("menu"))
-	Pix.btn(self, "QUIT", Vector2(84, 532), Vector2(260, 40), func(): get_tree().quit())
+	Pix.btn(self, "QUIT", Vector2(84, 496), Vector2(260, 40), func(): get_tree().quit())
 	var hist := "Best %d   |   Data %d   |   Runs %d\n" % [GameState.best_score, GameState.station_data, GameState.history.size()]
 	if GameState.history.is_empty():
 		hist += "No runs yet."
@@ -31,11 +30,8 @@ func build() -> void:
 	Pix.lbl(self, "Earthrise, Apollo 8 - NASA (public domain)  |  see assets/CREDITS.md", Vector2(620, 670), Vector2(640, 18), 11, Color(0.55, 0.62, 0.78))
 
 func start_game() -> void:
-	# First launch gets the three-slide briefing; afterwards START goes straight to the ISS.
-	if GameState.story_seen:
-		go("station")
-	else:
-		go("story")
+	# Always straight to the ISS. The briefing plays there on the first visit.
+	go("station")
 
 # ---------- settings ----------
 

@@ -3,7 +3,7 @@ extends SceneTree
 # Run:  Godot_v4.7.2-stable_win64.exe --headless --path . -s tests/smoke_test.gd
 # Prints PASS, or FAIL <why> and exits non-zero. Never touches the player's save.
 
-const SCENES := ["menu", "story", "tutorial", "station", "ship", "computer", "hangar", "mission", "flight", "explore", "report"]
+const SCENES := ["menu", "story", "tutorial", "station", "ship", "computer", "hangar", "mission", "flight", "explore", "report", "techbook"]
 const REASONS := ["Starvation", "Oxygen Depletion", "Ship Destruction", "Power Failure", "Stranded"]
 const GOLDEN := "res://tests/golden.json"
 const TOL := 0.01

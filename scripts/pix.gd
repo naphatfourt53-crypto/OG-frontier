@@ -23,6 +23,8 @@ const WARN := Color("ffc857")
 const ORANGE := Color("ff8a3d")
 
 static func make_theme() -> Theme:
+	# Shared look for every screen: rounded panels with a soft drop shadow, buttons that
+	# lift and brighten on hover and sink when pressed.
 	var t := Theme.new()
 	var states := {"normal": Color("1b2559"), "hover": Color("2a3a85"), "pressed": Color("0f1740"), "disabled": Color("181c30")}
 	for k in states:
@@ -30,9 +32,14 @@ static func make_theme() -> Theme:
 		sb.bg_color = states[k]
 		sb.set_border_width_all(2)
 		sb.border_color = EDGE if k != "disabled" else Color("3a4263")
-		sb.set_corner_radius_all(0)
-		sb.content_margin_left = 10
-		sb.content_margin_right = 10
+		if k == "hover":
+			sb.border_color = Color("9fe9ff")
+		sb.set_corner_radius_all(6)
+		sb.shadow_color = Color(0.0, 0.0, 0.0, 0.45) if k != "pressed" else Color(0.0, 0.0, 0.0, 0.1)
+		sb.shadow_size = 6 if k != "pressed" else 2
+		sb.shadow_offset = Vector2(0, 3) if k != "pressed" else Vector2(0, 1)
+		sb.content_margin_left = 12
+		sb.content_margin_right = 12
 		sb.content_margin_top = 6
 		sb.content_margin_bottom = 6
 		t.set_stylebox(k, "Button", sb)
@@ -46,7 +53,10 @@ static func make_theme() -> Theme:
 	ps.bg_color = PANEL
 	ps.set_border_width_all(2)
 	ps.border_color = Color("2c3a7a")
-	ps.set_corner_radius_all(0)
+	ps.set_corner_radius_all(8)
+	ps.shadow_color = Color(0.0, 0.0, 0.0, 0.5)
+	ps.shadow_size = 12
+	ps.shadow_offset = Vector2(0, 4)
 	t.set_stylebox("panel", "Panel", ps)
 	return t
 
