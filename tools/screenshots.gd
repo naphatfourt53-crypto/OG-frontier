@@ -111,6 +111,7 @@ func _run() -> void:
 	gs.buy_prep("scout")
 	gs.buy_prep("rad_kit")
 	gs.ore = {"ice": 3, "regolith": 9, "ilmenite": 2, "helium3": 0}
+	gs.tutorial_seen = true  # reset_all() cleared it; keep shot 17 on the lobby itself
 	await _shot("15_ship", "ship")
 	await _shot("16_computer", "computer")
 	await _shot("17_station_built", "station")
