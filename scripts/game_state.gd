@@ -52,7 +52,10 @@ var ore: Dictionary = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 var skip_save: bool = false
 # Set by Screen.go() so the next screen knows to fade in from black.
 var pending_fade: bool = false
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
+
+var _activities: Dictionary = {}
+var harvest_count: int = 0
 
 func _ready() -> void:
 	var f := FileAccess.open(DATA_PATH, FileAccess.READ)
@@ -86,6 +89,14 @@ func reset_all() -> void:
 	prep = {"rad_kit": false, "scout": false}
 	plots = []
 	ore = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
+	harvest_count = 0
+
+func activities() -> Dictionary:
+	if _activities.is_empty():
+		var f := FileAccess.open("res://data/activities.json", FileAccess.READ)
+		_activities = JSON.parse_string(f.get_as_text())
+		f.close()
+	return _activities
 
 func new_seed() -> void:
 	seed_value = randi() % 90000 + 10000
@@ -200,6 +211,7 @@ func harvest_plot() -> Dictionary:
 		return {"ok": false, "text": "Nothing ready to harvest yet."}
 	var kg := plot_kg()
 	food_store += kg
+	harvest_count += 1
 	var game: Dictionary = Farm.cfg()["game"]
 	plots[0] = Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"]))
 	save_game()
@@ -244,6 +256,96 @@ func mission_days(m: Dictionary) -> float:
 	for k in m["days"]:
 		t += float(m["days"][k])
 	return t
+
+# ---------- T17: flight plan + in-transit activities ----------
+
+# Data-driven flight plan: consume legs are auto-chained by advance();
+# activity nodes pause the run until the player resolves them.
+func build_run_plan(m: Dictionary) -> Array:
+	var act: Dictionary = activities()["game"]["transit"]
+	var out: float = float(m["days"]["transit_out"])
+	var nav_frac: Array = act["nav_sighting"]["trigger_fraction_of_trip"]
+	var burn_frac: float = float(act["midcourse_correction"]["trigger_fraction_of_trip"])
+	return [
+		{"kind": "consume", "days": out * float(nav_frac[0]), "label": "Coast to the Moon"},
+		{"kind": "nav", "idx": 0},
+		{"kind": "consume", "days": out * (float(nav_frac[1]) - float(nav_frac[0])), "label": "Coast to the Moon"},
+		{"kind": "nav", "idx": 1},
+		{"kind": "consume", "days": out * (burn_frac - float(nav_frac[1])), "label": "Coast to the Moon"},
+		{"kind": "burn"},
+		{"kind": "consume", "days": out * (1.0 - burn_frac), "label": "Coast to the Moon"},
+		{"kind": "event"},
+		{"kind": "leg", "id": "loi"},
+		{"kind": "leg", "id": "landing"},
+		{"kind": "consume", "days": float(m["days"]["landing"]), "label": "Landing day"},
+		{"kind": "explore"},
+		{"kind": "event"},
+		{"kind": "consume", "days": float(m["days"]["surface"]), "label": "Surface operations"},
+		{"kind": "leg", "id": "return"},
+		{"kind": "consume", "days": float(m["days"]["transit_back"]), "label": "Coast back to the station"},
+		{"kind": "event"},
+		{"kind": "finish"},
+	]
+
+func resolve_nav(accuracy: float) -> String:
+	var i := int(run.get("pending_nav", 0))
+	while run["nav_acc"].size() <= i:
+		run["nav_acc"].append(1.0)
+	var acc := clampf(accuracy, 0.0, 1.0)
+	run["nav_acc"][i] = acc
+	var txt := "Navigation sighting %d: %.0f%% accurate." % [i + 1, acc * 100.0]
+	_log(txt)
+	return txt
+
+func resolve_burn(hold_fraction: float) -> String:
+	var act: Dictionary = activities()["game"]["transit"]
+	var nominal: float = float(act["midcourse_correction"]["nominal_dv_m_s"])
+	var max_err: float = float(act["nav_sighting"]["max_extra_dv_error_m_s"])
+	var r := clampf(hold_fraction, 0.0, 1.2)
+	var nav_avg := 1.0
+	if not run["nav_acc"].is_empty():
+		var s := 0.0
+		for a in run["nav_acc"]:
+			s += float(a)
+		nav_avg = s / float(run["nav_acc"].size())
+	var extra := max_err * (1.0 - nav_avg)
+	var dv_applied := (nominal + extra) * r
+	var m_i := float(run["dry"]) + float(run["prop"])
+	var ve := float(opt("engine")["isp"]) * float(C["g0"])
+	var need := m_i * (1.0 - exp(-dv_applied / ve))
+	var have := float(run["prop"])
+	var used := minf(need, have)
+	run["prop"] = have - used
+	run["dv_penalty_m_s"] = (1.0 - r) * (nominal + extra)
+	run["burn_done"] = true
+	var txt := "Midcourse burn: %.2f m/s applied, %.2f t propellant used." % [dv_applied, used / 1000.0]
+	if r < 1.0:
+		txt += " Next burn must make up %.2f m/s." % float(run["dv_penalty_m_s"])
+	_log(txt)
+	return txt
+
+func set_thermal_roll(on: bool) -> void:
+	run["roll_on"] = on
+
+func set_exercise_hours(h: int) -> void:
+	run["exercise_hours"] = clampi(h, 0, 2)
+
+func stamina_capacity_mult() -> float:
+	if run.is_empty():
+		return 1.0
+	return 1.0 if int(run.get("exercise_hours", 2)) >= 2 else 0.9
+
+# Applied exactly once, after the return coast, if the roll was skipped.
+func apply_roll_damage() -> void:
+	if run.is_empty() or bool(run.get("roll_damage_done", false)) or bool(run.get("roll_on", true)):
+		return
+	run["roll_damage_done"] = true
+	var m := mission(run["mission"])
+	var coast := float(m["days"]["transit_out"]) + float(m["days"]["transit_back"])
+	var per_day := float(activities()["game"]["transit"]["thermal_roll"]["skip_hull_damage_pct_per_day"])
+	var loss := per_day * coast
+	run["hull"] = maxf(0.0, float(run["hull"]) - loss)
+	_log("Thermal roll skipped: %.1f hull lost to thermal stress." % loss)
 
 # ---------- design analysis (used by hangar UI and by the run) ----------
 func analyze(mission_id: String = "moon") -> Dictionary:
@@ -372,7 +474,12 @@ func start_run(mission_id: String) -> void:
 		"over": false, "reason": "", "detail": "", "landed": false, "success": false,
 		"legs": [], "log": [], "decisions": [], "current_event": {}, "score": 0, "data_gain": 0,
 		"min_net": 999.0, "rad_mult": rad_mult, "scout": has_scout, "food_store_used": food_used,
-		"stamina_btu": 0.0, "eva_food_kcal": 0.0, "eva_time": 0.0
+		"stamina_btu": 0.0, "eva_food_kcal": 0.0, "eva_time": 0.0,
+		"plan": build_run_plan(m), "plan_i": 0,
+		"nav_acc": [], "pending_nav": 0, "burn_done": false, "dv_penalty_m_s": 0.0,
+		"roll_on": true, "roll_damage_done": false, "exercise_hours": 2,
+		"morale": mini(3, harvest_count * int(activities()["game"]["transit"]["crew_schedule"].get("morale_gain_per_plant_crop", 1))),
+		"walks_log": [], "deploys": 0, "sample_kg": 0.0
 	}
 	# Fresh food from the ISS greenhouse rides in the galley, so it still has to be
 	# eaten. analyze() already removed it from the packed locker; load it into the stock
@@ -427,7 +534,8 @@ func _burn(leg_id: String) -> String:
 		if l["id"] == leg_id:
 			leg = l
 	var ve := float(opt("engine")["isp"]) * float(C["g0"])
-	var dv := float(leg["dv"]) * (1.0 + float(C["leg_margin"])) * 1000.0
+	var dv := float(leg["dv"]) * (1.0 + float(C["leg_margin"])) * 1000.0 + float(run.get("dv_penalty_m_s", 0.0))
+	run["dv_penalty_m_s"] = 0.0
 	var m_i: float = float(run["dry"]) + float(run["prop"])
 	var need: float = m_i * (1.0 - exp(-dv / ve))
 	var have: float = float(run["prop"])
@@ -444,45 +552,55 @@ func _burn(leg_id: String) -> String:
 	return txt2
 
 func advance() -> Dictionary:
-	if run["over"]:
-		finalize()
-		return {"kind": "end"}
-	var s: String = STEPS[run["step"]]
-	run["step"] += 1
-	var m := mission(run["mission"])
-	var d: Dictionary = m["days"]
-	var text := ""
-	match s:
-		"coast_out":
-			text = _consume(float(d["transit_out"]), "Coast to the Moon")
-		"land_day":
-			text = _consume(float(d["landing"]), "Landing day")
-		"surface":
-			text = _consume(float(d["surface"]), "Surface operations")
-		"coast_back":
-			text = _consume(float(d["transit_back"]), "Coast back to the station")
-		"explore":
-			return {"kind": "explore"}
-		"event":
-			var ev: Dictionary = run["events"][run["event_i"]]
-			run["event_i"] += 1
-			run["current_event"] = ev
-			return {"kind": "event", "event": ev}
-		"finish":
+	var guard := 0
+	while guard < 60:
+		guard += 1
+		if run["over"]:
+			finalize()
+			return {"kind": "end"}
+		if int(run["plan_i"]) >= run["plan"].size():
 			run["success"] = true
 			_log("Docked with the station. Mission complete.")
 			finalize()
 			return {"kind": "end"}
-		_:
-			if s.begins_with("leg:"):
-				text = _burn(s.substr(4))
-				if s == "leg:landing" and not run["over"]:
+		var step: Dictionary = run["plan"][run["plan_i"]]
+		run["plan_i"] += 1
+		var kind := String(step["kind"])
+		var m := mission(run["mission"])
+		match kind:
+			"consume":
+				var label := String(step["label"])
+				_consume(float(step["days"]), label)
+				if label == "Coast back to the station":
+					apply_roll_damage()
+				continue
+			"nav":
+				run["pending_nav"] = int(step["idx"])
+				return {"kind": "nav", "idx": int(step["idx"])}
+			"burn":
+				return {"kind": "burn"}
+			"event":
+				var ev: Dictionary = run["events"][run["event_i"]]
+				run["event_i"] += 1
+				run["current_event"] = ev
+				return {"kind": "event", "event": ev}
+			"leg":
+				var text := _burn(String(step["id"]))
+				if String(step["id"]) == "landing" and not run["over"]:
 					run["landed"] = true
 					run["data_raw"] += float(m["base_data"])
-	if run["over"]:
-		finalize()
-		return {"kind": "end", "text": text}
-	return {"kind": "info", "text": text, "step": s}
+				if run["over"]:
+					finalize()
+					return {"kind": "end", "text": text}
+				continue
+			"explore":
+				return {"kind": "explore"}
+			"finish":
+				run["success"] = true
+				_log("Docked with the station. Mission complete.")
+				finalize()
+				return {"kind": "end"}
+	return {"kind": "end"}
 
 func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0, eva_time: float = 0.0) -> void:
 	run["explore_pts"] = points
@@ -499,6 +617,8 @@ func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float =
 func apply_choice(i: int) -> String:
 	var ev: Dictionary = run["current_event"]
 	var ch: Dictionary = ev["choices"][i]
+	if ch.has("min_morale") and int(run.get("morale", 0)) < int(ch["min_morale"]):
+		return "The crew's morale is too low to attempt this choice."
 	var fx: Dictionary = ch["fx"]
 	run["decisions"].append("%s: %s" % [ev["title"], ch["label"]])
 	if fx.has("days"):
@@ -569,7 +689,8 @@ func save_game() -> void:
 		"station_data": station_data, "built": built.keys(), "mars": mars_unlocked, "best": best_score,
 		"history": history, "design": design, "fuel": fuel_pct, "seed": seed_value,
 		"eva": eva_seconds, "tutorial": tutorial_seen, "sound": sound_on,
-		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore}
+		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore,
+		"harvest": harvest_count}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -606,6 +727,7 @@ func load_game() -> void:
 	if typeof(o) == TYPE_DICTIONARY:
 		for k in ore:
 			ore[k] = int(o.get(k, 0))
+	harvest_count = maxi(0, int(d.get("harvest", 0)))
 	for k in d.get("design", {}):
 		design[k] = int(d["design"][k])
 	for id in d.get("built", []):

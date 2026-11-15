@@ -37,6 +37,7 @@ func _run() -> void:
 	_test_scenes()
 	_test_weak_run()
 	_test_new_systems()
+	_test_t17()
 	_test_golden()
 
 	if fails.is_empty():
@@ -58,6 +59,10 @@ func _play(choice: int, explore_pts: float, smart: bool = false) -> Dictionary:
 		var kind := String(res.get("kind", ""))
 		if kind == "explore":
 			gs.finish_explore(explore_pts)
+		elif kind == "nav":
+			gs.resolve_nav(1.0)
+		elif kind == "burn":
+			gs.resolve_burn(1.0)
 		elif kind == "event":
 			var ev: Dictionary = res["event"]
 			gs.apply_choice(_smart_choice(ev) if smart else choice)
@@ -201,6 +206,86 @@ func _test_new_systems() -> void:
 			_check(m.has(key) and not (typeof(m[key]) == TYPE_ARRAY and m[key].is_empty()),
 				"mission %s dossier has %s" % [mid, key])
 	_check(gs.SAVE_VERSION >= 4, "save version covers story/day/food/prep fields")
+	gs.reset_all()
+
+# ---------- T17 flight activities (plan, nav/burn, roll, schedule, morale) ----------
+func _test_t17() -> void:
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	var plan: Array = gs.run["plan"]
+	var navs := 0
+	var burns := 0
+	var day_acc := 0.0
+	var act_days: Array = []
+	for step in plan:
+		if String(step["kind"]) == "consume":
+			day_acc += float(step["days"])
+		elif String(step["kind"]) == "nav":
+			navs += 1
+			act_days.append(day_acc)
+		elif String(step["kind"]) == "burn":
+			burns += 1
+			act_days.append(day_acc)
+	_check(navs == 2, "plan has exactly 2 nav sightings (got %d)" % navs)
+	_check(burns == 1, "plan has exactly 1 midcourse burn (got %d)" % burns)
+	_check(act_days.size() == 3, "plan has 3 activity nodes (got %d)" % act_days.size())
+	if act_days.size() == 3:
+		_check(absf(float(act_days[0]) - 0.246) <= 0.001, "nav0 fires at 0.246 d (got %.3f)" % float(act_days[0]))
+		_check(absf(float(act_days[1]) - 0.984) <= 0.001, "nav1 fires at 0.984 d (got %.3f)" % float(act_days[1]))
+		_check(absf(float(act_days[2]) - 1.089) <= 0.001, "burn fires at 1.089 d (got %.3f)" % float(act_days[2]))
+	# Half-accurate sighting + perfect burn -> penalty cleared.
+	gs.resolve_nav(0.5)
+	gs.resolve_burn(1.0)
+	_check(absf(float(gs.run["dv_penalty_m_s"])) <= 0.001, "perfect burn clears the dv penalty (got %.3f)" % float(gs.run["dv_penalty_m_s"]))
+	# Worst case: zero nav accuracy + skipped burn -> penalty = nominal + max error.
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	gs.resolve_nav(0.0)
+	gs.resolve_burn(0.0)
+	_check(absf(float(gs.run["dv_penalty_m_s"]) - 12.37) <= 0.01, "worst-case penalty is 12.37 m/s (got %.3f)" % float(gs.run["dv_penalty_m_s"]))
+	# Skipped thermal roll: same-seed comparison, hull must drop exactly 12 (2%/day x 6 coast days).
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	var rep_on: Dictionary = _play(0, 30.0, true)
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	gs.set_thermal_roll(false)
+	var rep_off: Dictionary = _play(0, 30.0, true)
+	_check(rep_on.get("success") and rep_off.get("success"), "smart run succeeds with and without the roll")
+	_check(absf((float(rep_on.get("hull", 0.0)) - float(rep_off.get("hull", 0.0))) - 12.0) <= 0.5,
+		"skipping the roll costs exactly 12 hull (got %.1f)" % (float(rep_on.get("hull", 0.0)) - float(rep_off.get("hull", 0.0))))
+	# Exercise hours -> stamina capacity multiplier on arrival.
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	gs.set_exercise_hours(0)
+	_check(absf(gs.stamina_capacity_mult() - 0.9) <= 0.001, "0 h exercise -> 0.9 capacity (got %.2f)" % gs.stamina_capacity_mult())
+	gs.set_exercise_hours(2)
+	_check(absf(gs.stamina_capacity_mult() - 1.0) <= 0.001, "2 h exercise -> 1.0 capacity (got %.2f)" % gs.stamina_capacity_mult())
+	# Morale gates event choices: blocked at 0, allowed at 1.
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	var ice: Dictionary = {}
+	for e in gs.data["events"]:
+		if String(e["id"]) == "ice":
+			ice = e
+	_check(not ice.is_empty(), "ice event exists for the morale gate")
+	if not ice.is_empty():
+		gs.run["current_event"] = ice
+		gs.run["morale"] = 0
+		var raw_before := float(gs.run["data_raw"])
+		var blocked: String = gs.apply_choice(ice["choices"].size() - 1)
+		_check(String(blocked).to_lower().contains("morale"), "morale choice is blocked at 0 (got '%s')" % blocked)
+		_check(absf(float(gs.run["data_raw"]) - raw_before) <= 0.001, "blocked choice changes nothing")
+		gs.run["morale"] = 2
+		var allowed: String = gs.apply_choice(ice["choices"].size() - 1)
+		_check(not String(allowed).to_lower().contains("morale"), "morale choice allowed at 2")
+		_check(absf(float(gs.run["data_raw"]) - (raw_before + 6.0)) <= 0.001, "morale choice grants its data bonus")
 	gs.reset_all()
 
 # ---------- parity with tools/balance_check.py ----------

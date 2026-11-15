@@ -132,7 +132,8 @@
       "text": "Neutron data hints at a rich ice pocket in a permanently shadowed crater.",
       "choices": [
         { "label": "Drill it (+1 day)", "result": "Great science and extra water.", "fx": { "days": 1, "data": 20, "water_kg": 25 } },
-        { "label": "Skip it",           "result": "You stay on schedule.",           "fx": {} } ] },
+        { "label": "Skip it",           "result": "You stay on schedule.",           "fx": {} },
+        { "label": "Rally the crew",     "result": "The crew shares what keeps them going.", "fx": { "data": 6 }, "min_morale": 1 } ] },
     { "id": "quake", "slot": "surface", "title": "Moonquake",
       "text": "Apollo seismometers proved moonquakes are real. The lander shakes.",
       "choices": [
