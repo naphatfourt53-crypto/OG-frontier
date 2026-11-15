@@ -22,10 +22,29 @@
 
 - Insufficient Data now shows a red message naming the shortfall.
 
-### Not yet (Phase 3 / later)
+### Added (Phase 3: campaign)
 
-- 8-mission campaign, probes for gas giants and Mercury/Venus, 1200-day deadline.
-- Tooltip cards on the hangar parts and flight buttons (station only for now).
+- **8-mission campaign**: the crewed Moon mission plus seven robotic probes (Mars lander and sample return, Venus, Mercury, Jupiter, Saturn, Uranus, Neptune). Mars is a robot, not a crewed flight: a crewed Mars round trip needs about 11 km/s and 16 t of supplies for 900 days, which this ship cannot carry.
+- **Real flight times**: each probe flies its Hohmann transit (calc from physics.json orbit constants). It arrives on the real day and waits for the encounter.
+- **Real launch windows**: a probe launches only in its synodic window (Mercury 116 d, Venus 584 d, Mars 780 d, Jupiter 399 d, Saturn 378 d, Uranus 370 d, Neptune 367 d). The window start uses a game epoch on day 1 (game rule).
+- **PROBE CONTROL** (from the ISS): launch, wait for the window, run the encounter on arrival.
+- **Encounters**: station-keeping (hold the cursor inside the moving zone; 70% pass line) for lander and orbiter probes; gas scoop (choose a depth: more gas, more risk) for gas giants.
+- **Deadline**: 12,000 game days (game rule) and a 180-day epilogue after the last completed mission. Win = all eight done and the epilogue passed. Lose = the deadline first.
+- **Result screen** (win and lose) and a RESULT button on the ISS once the campaign is over.
+- Tech Book: PROBES tab (real transit and window numbers; costs tagged game).
+- Save version 8 (campaign). Version 7 saves migrate: a Moon success becomes a completed Moon mission.
+- check_physics: campaign mirror (transits, synodic periods, and the best finish order: day 11,215 with the epilogue at 11,395, under the 12,000 deadline).
+
+### Changed (Phase 3)
+
+- Crewed Mars dossier removed from Mission Control (Mars is a probe now).
+- Thermal roll skip can now destroy the hull (hull floor at zero, ends the run).
+
+### Not yet (later)
+
+- Gas-giant, Mercury and Venus numbers are game values until the team adds them to the Data Book.
+- Comms delay on Mars is shown as text only (3 to 22 minutes); no timed decisions yet.
+- Crewed Mars (one-way plus ISRU) is a future redesign.
 - Further visual polish (Phase 4 continues).
 
 รอบแก้ตาม feedback ทีม + ไฟล์งาน T10–T19 (เฟส 1 จากทั้งหมด 3 เฟส)

@@ -71,7 +71,8 @@ func refresh() -> void:
 	var header: Panel = Pix.panel(ui, Vector2(12, 6), Vector2(1256, 96))
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	Pix.lbl(ui, "OG-FRONTIER  |  ISS OPERATIONS LOBBY", Vector2(24, 8), Vector2(700, 34), 26, Pix.EDGE)
-	Pix.lbl(ui, "DAY %03d   |   %s   |   ISS LOW EARTH ORBIT   |   EARTH: CRITICAL" % [GameState.day, GameState.date_text()],
+	Pix.lbl(ui, "DAY %d / %d   |   %s   |   ISS LOW EARTH ORBIT   |   %d DAYS TO EARTH DEADLINE" % [
+		GameState.day, int(Campaign.deadline_days()), GameState.date_text(), GameState.days_left()],
 		Vector2(24, 42), Vector2(820, 20), 13, Pix.WARN)
 	Pix.chip(ui, Vector2(24, 62), "data", "Data %d" % GameState.station_data, Pix.EDGE)
 	Pix.chip(ui, Vector2(230, 62), "food", "Food %.1f kg" % GameState.food_store, Pix.GOOD)
@@ -120,6 +121,7 @@ func refresh() -> void:
 		["CREW CABIN", "Crew cabin: load gear for the next flight and check the ship.", "ship"],
 		["TERMINAL", "ISS terminal: mission files, dossiers and orbit checks.", "computer"],
 		["TECH BOOK", "Tech Book: pictures and plain-language notes on every module, part, suit rule and mission.", "techbook"],
+		["PROBES", "Probe Control: launch robotic probes to Mars, Venus, Mercury and the outer planets. Real flight times and launch windows.", "probes"],
 	]
 	# Narrow column on the far right so it never covers the Relay Array / Solar Wing rooms.
 	var y := 110.0
@@ -133,6 +135,8 @@ func refresh() -> void:
 	y += 46.0
 	var how_btn := Pix.btn(ui, "HOW TO PLAY", Vector2(1108, y), Vector2(138, 40), open_tutorial)
 	_tip(how_btn, "HOW TO PLAY", "The five-page guide: walking, the first mission, flight, the Moon and the report.", Pix.EDGE)
+	if GameState.campaign_over():
+		Pix.btn_primary(ui, "RESULT >", Vector2(960, 14), Vector2(130, 36), func(): go("endgame"))
 	Pix.lbl(ui, "Mission Control, Apollo 9 - NASA", Vector2(1048, 684), Vector2(206, 18), 11, Color(0.55, 0.62, 0.78))
 	queue_redraw()
 

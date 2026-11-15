@@ -174,7 +174,7 @@ func _run() -> void:
 	await _capture("25_station_story_first_visit")
 	await _close(st_story)
 	gs.story_seen = true
-	for tab_name in ["STATION", "SHIP", "FLIGHT", "EVA", "MISSIONS"]:
+	for tab_name in ["STATION", "SHIP", "FLIGHT", "EVA", "MISSIONS", "PROBES"]:
 		var tb = await _open("techbook")
 		tb._set_tab(tab_name)
 		await _frames(2)
@@ -190,6 +190,57 @@ func _run() -> void:
 	await _frames(2)
 	await _capture("27_hangar_card")
 	await _close(hg)
+
+	# Phase 3: probe control, locked and open, and both encounter types.
+	gs.reset_all()
+	var pc_locked = await _open("probes")
+	await _frames(2)
+	await _capture("28_probes_locked")
+	await _close(pc_locked)
+	gs.reset_all()
+	gs.station_data = 400
+	gs.campaign["done"]["moon"] = 1
+	gs.day = 1
+	gs.launch_probe("mars")
+	gs.campaign["probes"]["jupiter"] = {"state": "pending", "launch_day": 0, "arrive_day": 0}
+	gs.campaign["probes"]["mercury"] = {"state": "lost", "launch_day": 0, "arrive_day": 0}
+	var pc = await _open("probes")
+	await _frames(2)
+	await _capture("29_probes_status")
+	pc._open_encounter("jupiter")
+	await _frames(2)
+	await _capture("31_encounter_scoop")
+	await _close(pc)
+	gs.campaign["probes"]["mars"]["state"] = "pending"
+	var pc_keep = await _open("probes")
+	pc_keep._open_encounter("mars")
+	await _frames(3)
+	await _capture("30_encounter_keeping")
+	await _close(pc_keep)
+	gs.reset_all()
+	# Endgame: a win and a loss, both built from the same campaign state the game saves.
+	gs.reset_all()
+	for mid in Campaign.cfg()["campaign"]["order"]:
+		gs.campaign["done"][String(mid)] = 100 + 40 * Campaign.cfg()["campaign"]["order"].find(mid)
+	gs.campaign["won"] = true
+	gs.campaign["end_day"] = 100 + 40 * 7 + 180
+	gs.day = gs.campaign["end_day"]
+	gs.campaign_log("All eight missions done. The epilogue is over: Earth is stable.")
+	var win_node = await _open("endgame")
+	await _frames(2)
+	await _capture("32_endgame_win")
+	await _close(win_node)
+	gs.reset_all()
+	gs.campaign["done"]["moon"] = 9
+	gs.campaign["done"]["venus"] = 150
+	gs.campaign["lost"] = true
+	gs.day = int(Campaign.deadline_days())
+	gs.campaign_log("The Earth deadline has passed with 2 of 8 missions done.")
+	var lose_node = await _open("endgame")
+	await _frames(2)
+	await _capture("33_endgame_lose")
+	await _close(lose_node)
+	gs.reset_all()
 
 	if failures.is_empty():
 		print("SCREENSHOTS OK -> ", ProjectSettings.globalize_path(OUT_DIR))

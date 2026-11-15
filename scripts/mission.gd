@@ -34,15 +34,11 @@ func refresh() -> void:
 		ui.add_child(b)
 		y += 60
 	var m: Dictionary = GameState.mission(selected)
+	Pix.lbl(ui, "Robotic probes (Mars, Venus, Mercury, gas giants) are launched from PROBE CONTROL on the ISS.",
+		Vector2(20, 140), Vector2(380, 40), 13, Pix.DIM)
 	Pix.lbl(ui, String(m["name"]), Vector2(430, 70), Vector2(800, 34), 24, Pix.WARN)
 	Pix.lbl(ui, String(m["brief"]), Vector2(430, 110), Vector2(820, 70), 16, Pix.TEXT)
 	_support_panel()
-	if selected == "mars":
-		var txt := "Mars is unlocked!\nThis prototype ends here. In the full game Mars uses the data from the Game Data Book (4.3 km/s transfer, 6.36 mbar CO2 atmosphere, MOXIE-style oxygen)." if GameState.mars_unlocked else "Complete the Moon mission first to unlock Mars."
-		Pix.lbl(ui, txt, Vector2(430, 200), Vector2(800, 120), 18, Pix.GOOD if GameState.mars_unlocked else Pix.DIM)
-		Pix.btn(ui, "DETAILS", Vector2(500, 660), Vector2(150, 40), open_dossier)
-		Pix.btn(ui, "< Station", Vector2(20, 660), Vector2(150, 40), func(): go("station"))
-		return
 	# plan table
 	var a := GameState.analyze("moon")
 	Pix.lbl(ui, "FLIGHT PLAN (each burn includes a %d%% margin)" % int(float(GameState.C["leg_margin"]) * 100.0), Vector2(430, 190), Vector2(820, 22), 15, Pix.WARN)

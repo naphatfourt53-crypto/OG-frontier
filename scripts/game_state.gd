@@ -590,8 +590,12 @@ func apply_roll_damage() -> void:
 	var coast := float(m["days"]["transit_out"]) + float(m["days"]["transit_back"])
 	var per_day := float(activities()["game"]["transit"]["thermal_roll"]["skip_hull_damage_pct_per_day"])
 	var loss := per_day * coast
-	run["hull"] = maxf(0.0, float(run["hull"]) - loss)
+	run["hull"] = float(run["hull"]) - loss
 	_log("Thermal roll skipped: %.1f hull lost to thermal stress." % loss)
+	# The hull cannot go below zero, and a hull at zero ends the run like any other hull loss.
+	if float(run["hull"]) <= 0.0 and not run["over"]:
+		run["hull"] = 0.0
+		_fail("Ship Destruction", "Skipping the thermal roll for %.0f days stressed the hull past its limit." % coast)
 
 # ---------- design analysis (used by hangar UI and by the run) ----------
 func analyze(mission_id: String = "moon") -> Dictionary:

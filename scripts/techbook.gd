@@ -5,7 +5,7 @@ extends Screen
 
 var ui: Control
 var tab: String = "STATION"
-const TABS := ["STATION", "SHIP", "FLIGHT", "EVA", "MISSIONS"]
+const TABS := ["STATION", "SHIP", "FLIGHT", "EVA", "MISSIONS", "PROBES"]
 const ROLE_COL := {"core": Color("4fd1ff"), "habitat": Color("5dff9a"), "hangar": Color("ff8a3d"),
 	"control": Color("ffc857"), "bonus": Color("b07bff")}
 const PART_WHAT := {
@@ -37,10 +37,10 @@ func render() -> void:
 	var x := 52.0
 	for t in TABS:
 		var name: String = t
-		var b := Pix.btn(ui, name, Vector2(x, 110), Vector2(200, 40), func(): _set_tab(name))
+		var b := Pix.btn(ui, name, Vector2(x, 110), Vector2(190, 40), func(): _set_tab(name))
 		if name == tab:
 			b.modulate = Color(0.5, 1.0, 0.7)
-		x += 212.0
+		x += 200.0
 	Pix.btn(ui, "< Station", Vector2(1040, 36), Vector2(180, 40), func(): go("station"))
 	var entries := _entries_for(tab)
 	_layout(entries)
@@ -68,6 +68,14 @@ func _entries_for(t: String) -> Array:
 					lines.append("%s: %d kg, %d Data. %s" % [o["name"], int(o["mass"]), int(o["cost"]), o["info"]])
 				out.append({"title": "%s - %s" % [p["name"], PART_WHAT.get(p["id"], "")],
 					"body": "\n".join(PackedStringArray(lines)), "col": Pix.EDGE, "tag": TAG_GAME})
+		"PROBES":
+			for pid in Campaign.probe_ids():
+				var pr: Dictionary = Campaign.probe(pid)
+				var body := "%s\nFlight %d d (real Hohmann). Window every %d d (real synodic). Cost %d Data, %d station days." % [
+					pr["info"], int(ceilf(Campaign.transit_days(pid))), int(Campaign.synodic_days(pid)),
+					int(pr["data_cost"]), int(Campaign.cfg()["campaign"]["launch_station_days"])]
+				out.append({"title": String(pr["name"]), "body": body, "col": Pix.EDGE,
+					"tag": "Real basis (flight, windows) / Game rule (cost, reward)"})
 		"FLIGHT":
 			out = _flight_entries()
 		"EVA":

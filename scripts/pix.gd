@@ -117,6 +117,17 @@ static func card_attach(box: Control, b: Control, title: String, sub: String, bo
 	b.mouse_entered.connect(func(): card_show(box, title, sub, body, col, rows))
 	b.mouse_exited.connect(func(): box.visible = false)
 
+# A planet disc with a dark terminator, drawn with code (no image needed).
+static func planet(parent: Node, center: Vector2, r: float, col: Color) -> void:
+	var c := Control.new()
+	c.position = center - Vector2(r, r)
+	c.size = Vector2(r * 2.0, r * 2.0)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(c)
+	c.draw.connect(func():
+		c.draw_circle(Vector2(r, r), r, col.darkened(0.45))
+		c.draw_circle(Vector2(r * 0.8, r * 0.8), r * 0.7, col))
+
 # Resource chip for the top bar: a vector icon, a value, and an optional progress bar (0..1).
 static func chip(parent: Node, pos: Vector2, kind: String, text: String, col: Color, value: float = -1.0) -> void:
 	var c := Control.new()
