@@ -43,6 +43,7 @@ var deployed_count: int = 0
 var jettison_open: bool = false
 var keep_flags: Dictionary = {"ice": true, "regolith": true, "ilmenite": true, "helium3": true}
 var _final_reason: String = "The EVA clock ran out."
+var _task_key_was_down: bool = false
 
 const DOC_RANGE := 40.0
 const TASK_RANGE := 60.0
@@ -182,6 +183,14 @@ func _start_hold(kind: String, idx: int) -> void:
 	task_hold = 0.0
 
 func _process_hold(delta: float) -> void:
+	var key_ok := Input.is_key_pressed(KEY_F) if hold_kind == "document" else Input.is_key_pressed(KEY_E)
+	if not key_ok:
+		# The task only counts while the key is held; releasing cancels it.
+		info.text = "Cancelled."
+		hold_kind = ""
+		task_hold = 0.0
+		hold_idx = -1
+		return
 	task_hold += delta
 	var pace := "hard" if hold_kind == "core" else "easy"
 	var applied := suit.step(delta, pace, false)
@@ -201,7 +210,7 @@ func _complete_hold() -> void:
 		"core":
 			if hold_idx >= 0 and hold_idx < outcrops.size() and not (hold_idx in core_done):
 				core_done.append(hold_idx)
-				var bonus := 2.0 * float(res["regolith"]["pts"])
+				var bonus := _core_multiplier() * float(res["regolith"]["pts"])
 				points += bonus
 				info.text = "Core sample drilled: +%d pts." % int(bonus)
 		"deploy":
@@ -214,20 +223,33 @@ func _complete_hold() -> void:
 	hold_idx = -1
 
 func _check_hold_keys() -> void:
-	if Input.is_key_pressed(KEY_E):
-		var site := _nearest_deploy_site(TASK_RANGE)
-		if site >= 0:
-			_start_hold("deploy", site)
-			return
-		var outcrop := _nearest_outcrop(TASK_RANGE)
-		if outcrop >= 0 and "drill" in tools:
-			_start_hold("core", outcrop)
-			return
-	if Input.is_key_pressed(KEY_F):
-		if "camera" in tools:
+	var e_down := Input.is_key_pressed(KEY_E)
+	var f_down := Input.is_key_pressed(KEY_F)
+	if not _task_key_was_down:
+		if e_down:
+			var site := _nearest_deploy_site(TASK_RANGE)
+			if site >= 0:
+				_start_hold("deploy", site)
+				_task_key_was_down = true
+				return
+			var outcrop := _nearest_outcrop(TASK_RANGE)
+			if outcrop >= 0 and "drill" in tools:
+				_start_hold("core", outcrop)
+				_task_key_was_down = true
+				return
+		if f_down and "camera" in tools:
 			var it := _nearest_item(DOC_RANGE)
 			if it >= 0 and not bool(items[it].get("documented", false)):
 				_start_hold("document", it)
+				_task_key_was_down = true
+				return
+	_task_key_was_down = e_down or f_down
+
+func _doc_multiplier() -> float:
+	return float(GameState.activities()["game"]["surface"]["tasks"]["document"]["points_multiplier"])
+
+func _core_multiplier() -> float:
+	return float(GameState.activities()["game"]["surface"]["tasks"]["core"]["points_multiplier"])
 
 # ---------- T18 walk lifecycle ----------
 
@@ -450,7 +472,7 @@ func _process_movement(delta: float) -> void:
 	for it in items.duplicate():
 		if pl.distance_to(it["pos"]) < PICKUP:
 			items.erase(it)
-			var mult := 1.5 if bool(it.get("documented", false)) else 1.0
+			var mult := _doc_multiplier() if bool(it.get("documented", false)) else 1.0
 			var gained := float(it["pts"]) * mult
 			points += gained
 			counts[it["type"]] += 1

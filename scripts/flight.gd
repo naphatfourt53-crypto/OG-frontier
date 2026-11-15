@@ -26,6 +26,7 @@ var nav_bar: ColorRect
 var nav_status: Label
 var burn_active: bool = false
 var burn_held: float = 0.0
+var burn_elapsed: float = 0.0
 var burn_was_holding: bool = false
 var burn_bar: ColorRect
 var burn_status: Label
@@ -115,6 +116,7 @@ func _process_nav(delta: float) -> void:
 		_show_activity_result("NAVIGATION SIGHTING", GameState.resolve_nav(acc))
 
 func _process_burn(delta: float) -> void:
+	burn_elapsed += delta
 	var holding := Input.is_key_pressed(KEY_SPACE) or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var hold_s := float(GameState.activities()["game"]["transit"]["midcourse_correction"]["burn_hold_s"])
 	if holding:
@@ -125,6 +127,9 @@ func _process_burn(delta: float) -> void:
 		_finish_burn()
 	elif burn_was_holding and not holding and burn_held > 0.0:
 		# Released early: the correction is cut short and the next burn pays for it.
+		_finish_burn()
+	elif burn_held <= 0.0 and burn_elapsed >= hold_s * 2.0:
+		# Dead-man: never pressed - the window passes and the full correction is skipped.
 		_finish_burn()
 	burn_was_holding = holding
 

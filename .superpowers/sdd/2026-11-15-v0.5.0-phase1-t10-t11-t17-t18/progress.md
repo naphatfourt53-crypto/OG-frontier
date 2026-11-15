@@ -20,4 +20,12 @@ Task 4: complete (commits 98bd724..17d60a2, tests: smoke -> PASS 180 checks exit
 Task 5: complete (commits 17d60a2..6715da1, tests: smoke PASS 180, screenshots 21 OK, balance_check exit 0)
   Ruling: launch checklist shows when plan_i == 0 (not run.step, which advance() no longer updates); set_progress() now maps plan_i/plan.size() onto the ship arc.
   Ruling: burn finishes on release-after-hold OR auto at burn_hold_s - an instant release ends with fraction ~0 and a full penalty.
-Task 6: in progress
+Task 6: complete (commits 6715da1..75672d3, tests: smoke -> PASS 190 checks, screenshots 21 OK, balance exit 0)
+  Ruling: launch checklist shows when plan_i == 0 (not run.step, which advance() no longer updates); set_progress() now maps plan_i/plan.size() onto the ship arc.
+Task 7: complete (commits 75672d3..bedddf7, tests: smoke -> PASS 191 checks, screenshots 23 OK, check_physics ALL PASS, balance exit 0)
+  Ruling: prep panel shows before walk 1 instead of auto-starting; _test_t18 confirms prep first (plan's step text predates the panel).
+  Ruling: jettison drops whole resource types (not per-piece) - simplest honest UI; points and ore both lost.
+  Ruling: document/core/deploy holds pause movement; core forces hard pace, other holds drain at easy.
+Task 8: complete (commits bedddf7..f3c052e, tests: smoke PASS 191, mirror PASS 18, check_physics ALL PASS, balance exit 0 incl. T17 worst-case line)
+  Ruling: the Godot editor rewrote project.godot during a windowed run and dropped the explicit `renderer/rendering_method` desktop+web lines - defaults are identical (forward_plus / gl_compatibility for web), so this is benign; verified via the property list earlier.
+Final review: review range 2254a4a..f3c052e (merge base 2254a4a), dispatch fresh reviewer.

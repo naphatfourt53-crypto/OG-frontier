@@ -333,7 +333,11 @@ func set_exercise_hours(h: int) -> void:
 func stamina_capacity_mult() -> float:
 	if run.is_empty():
 		return 1.0
-	return 1.0 if int(run.get("exercise_hours", 2)) >= 2 else 0.9
+	var crew: Dictionary = activities()["game"]["transit"]["crew_schedule"]
+	var healthy_h := int(crew["exercise_hours_options"].back())
+	if int(run.get("exercise_hours", healthy_h)) >= healthy_h:
+		return 1.0
+	return 1.0 - float(crew["no_exercise_stamina_capacity_penalty_pct"]) / 100.0
 
 # Applied exactly once, after the return coast, if the roll was skipped.
 func apply_roll_damage() -> void:

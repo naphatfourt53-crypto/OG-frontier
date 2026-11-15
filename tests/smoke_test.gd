@@ -267,6 +267,23 @@ func _test_t17() -> void:
 	_check(absf(gs.stamina_capacity_mult() - 0.9) <= 0.001, "0 h exercise -> 0.9 capacity (got %.2f)" % gs.stamina_capacity_mult())
 	gs.set_exercise_hours(2)
 	_check(absf(gs.stamina_capacity_mult() - 1.0) <= 0.001, "2 h exercise -> 1.0 capacity (got %.2f)" % gs.stamina_capacity_mult())
+	# The penalty must come from activities.json, not a hardcoded 0.9.
+	var pct := float(gs.activities()["game"]["transit"]["crew_schedule"]["no_exercise_stamina_capacity_penalty_pct"])
+	gs.set_exercise_hours(0)
+	_check(absf(gs.stamina_capacity_mult() - (1.0 - pct / 100.0)) <= 0.001,
+		"capacity penalty reads activities.json (got %.3f, want %.3f)" % [gs.stamina_capacity_mult(), 1.0 - pct / 100.0])
+	# Dead-man: the midcourse burn must resolve even if the player never presses anything.
+	var flight_packed: PackedScene = load("res://scenes/flight.tscn")
+	_check(flight_packed != null, "flight scene loads for the burn dead-man test")
+	if flight_packed != null:
+		var fnode: Node = flight_packed.instantiate()
+		root.add_child(fnode)
+		fnode.call("show_burn")
+		fnode.call("_process_burn", 7.0)
+		_check(bool(gs.run.get("burn_done", false)), "burn auto-resolves when the player never presses")
+		_check(absf(float(gs.run.get("dv_penalty_m_s", 0.0)) - 6.37) <= 0.01,
+			"skipped burn leaves the full nominal penalty (got %.3f)" % float(gs.run.get("dv_penalty_m_s", 0.0)))
+		fnode.queue_free()
 	# Morale gates event choices: blocked at 0, allowed at 1.
 	gs.reset_all()
 	gs.load_sample_design()
@@ -315,6 +332,16 @@ func _test_t18() -> void:
 		_check(wi3 != null and int(wi3) == 3, "third walk starts at index 3 (got %s)" % str(wi3))
 		node.call("end_walk", "test reason")
 		_check(bool(node.get("in_final")), "walk 3 ends into the final panel")
+		# Hold tasks must require holding: a tap (key never down) cancels.
+		var pts_before: float = float(node.get("points"))
+		node.call("_start_hold", "core", 0)
+		node.call("_process_hold", 2.0)
+		_check(String(node.get("hold_kind")) == "", "hold cancels when the key is not down")
+		_check(absf(float(node.get("points")) - pts_before) <= 0.001, "cancelled hold grants no points")
+		_check(absf(float(node.call("_doc_multiplier")) - float(gs.activities()["game"]["surface"]["tasks"]["document"]["points_multiplier"])) <= 0.001,
+			"document multiplier wired to activities.json")
+		_check(absf(float(node.call("_core_multiplier")) - float(gs.activities()["game"]["surface"]["tasks"]["core"]["points_multiplier"])) <= 0.001,
+			"core multiplier wired to activities.json")
 		node.queue_free()
 	# Sample mass enters dry mass before the return burn.
 	gs.run["dry"] = 100.0
