@@ -23,6 +23,8 @@ func build() -> void:
 func rebuild() -> void:
 	Pix.clear(ui)
 	Pix.lbl(ui, "HANGAR - Assemble your ship", Vector2(20, 14), Vector2(700, 36), 28, Pix.EDGE)
+	Pix.lbl(ui, "GUIDE: pick one option per row (* = sample). Green = pass, red = fail. Then Mission Control >",
+		Vector2(480, 24), Vector2(780, 22), 14, Pix.WARN)
 	info = Pix.lbl(ui, "Hover an option to read about it.", Vector2(20, 596), Vector2(600, 44), 15, Pix.DIM)
 	build_parts()
 	build_fuel()

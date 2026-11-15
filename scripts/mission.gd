@@ -15,6 +15,8 @@ func build() -> void:
 func refresh() -> void:
 	Pix.clear(ui)
 	Pix.lbl(ui, "MISSION CONTROL", Vector2(20, 14), Vector2(600, 36), 28, Pix.EDGE)
+	Pix.lbl(ui, "GUIDE: pick a mission (left), read the plan, then LAUNCH. Mission 1 = the Moon: land, collect ore, come HOME.",
+		Vector2(330, 24), Vector2(930, 22), 14, Pix.WARN)
 	# mission list
 	var y := 70
 	for m in GameState.data["missions"]:

@@ -2,7 +2,31 @@
 
 รูปแบบอ้างอิง [Keep a Changelog](https://keepachangelog.com/) และ semantic versioning
 
-## [0.5.0] - 2026-11-15 (Phase 1: T10/T11/T17/T18)
+## [0.5.0] - 2026-11-15 (Phase 1 + Phase 2 + guide; Phase 3 pending)
+
+### Added (Phase 2 + guide)
+
+- **ISS walkable**: crew member walks with WASD/arrows, rooms block the way,
+  E enters or builds the room next to you; hover any room for a picture card.
+- **First-mission guide**: the top line of the ISS names the next step
+  (Hangar -> Mission Control -> Moon -> home). Hangar and Mission Control
+  have a GUIDE line; the flight and Moon-walk screens have HOW TO lines.
+- **Story on first visit** plays on the ISS (embedded overlay); STORY button
+  replays it.
+- **HOW TO PLAY** (5 pages) and **TECH BOOK** (STATION, SHIP, FLIGHT, EVA,
+  MISSIONS) built from the data files; facts tagged Real basis / Game rule.
+- Menu cleaned: START / SETTINGS / RESET SAVE / QUIT.
+- UI pass: rounded panels with shadows, hover border on buttons, station header bar.
+
+### Changed (Phase 2 + guide)
+
+- Insufficient Data now shows a red message naming the shortfall.
+
+### Not yet (Phase 3 / later)
+
+- 8-mission campaign, probes for gas giants and Mercury/Venus, 1200-day deadline.
+- Tooltip cards on the hangar parts and flight buttons (station only for now).
+- Further visual polish (Phase 4 continues).
 
 รอบแก้ตาม feedback ทีม + ไฟล์งาน T10–T19 (เฟส 1 จากทั้งหมด 3 เฟส)
 
