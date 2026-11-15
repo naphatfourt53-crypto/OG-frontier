@@ -30,6 +30,22 @@ var total_elapsed: float = 0.0
 var total_btu: float = 0.0
 var _life_name: String = "Open-loop"
 var _time_mult: float = 1.0
+# T18 surface tasks
+var in_prep: bool = false
+var tools: Array = ["camera", "drill"]
+var hold_kind: String = ""
+var task_hold: float = 0.0
+var hold_idx: int = -1
+var core_done: Array = []
+var deploy_sites: Array = []
+var deploy_used: Array = []
+var deployed_count: int = 0
+var jettison_open: bool = false
+var keep_flags: Dictionary = {"ice": true, "regolith": true, "ilmenite": true, "helium3": true}
+var _final_reason: String = "The EVA clock ran out."
+
+const DOC_RANGE := 40.0
+const TASK_RANGE := 60.0
 
 const GROUND_TOP := 104.0
 const SPEED := 240.0
@@ -67,14 +83,151 @@ func build() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(overlay)
 	Pix.lbl(ui, "MOON WALK - sample the south pole", Vector2(20, 10), Vector2(700, 32), 24, Pix.EDGE)
-	Pix.lbl(ui, "WASD / arrows to move. 1 easy / 2 normal / 3 hard / Shift burst. SPACE returns to the lander.",
-		Vector2(20, 42), Vector2(900, 22), 14, Pix.DIM)
+	Pix.lbl(ui, "WASD / arrows to move. 1 easy / 2 normal / 3 hard / Shift burst. SPACE returns to the lander. F photograph  E drill/deploy.",
+		Vector2(20, 42), Vector2(1100, 22), 14, Pix.DIM)
 	count_label = Pix.lbl(ui, "", Vector2(20, 70), Vector2(760, 24), 16, Pix.WARN)
 	hud_label = Pix.lbl(ui, "", Vector2(900, 10), Vector2(360, 28), 20, Pix.WARN)
 	hud_label.mouse_filter = Control.MOUSE_FILTER_STOP  # so the tooltip can show
 	hud_label.tooltip_text = "Game model. Burn rates come from Apollo and ISS suit data; capacity tiers above Open-loop are game values."
 	info = Pix.lbl(ui, "", Vector2(760, 66), Vector2(500, 30), 14, Pix.DIM)
+	deploy_sites = [Vector2(180, 620), Vector2(640, 640), Vector2(1100, 610)]
+	_show_prep_panel()
+
+# ---------- T18 surface tasks ----------
+
+func _show_prep_panel() -> void:
+	in_prep = true
+	done = true  # freeze the walk behind the panel
+	Pix.clear(overlay)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	Pix.panel(overlay, Vector2(300, 130), Vector2(680, 440))
+	Pix.lbl(overlay, "EVA PREP - CHOOSE 2 TOOLS", Vector2(330, 148), Vector2(620, 36), 26, Pix.WARN)
+	Pix.lbl(overlay, "Task names: Artemis III plan. Numbers: Game rule.", Vector2(330, 188), Vector2(620, 22), 12, Pix.DIM)
+	var descs := {
+		"camera": "CAMERA - photograph a sample site before collecting (x1.5 points)",
+		"drill": "DRILL - core samples at rock outcrops (x2.0 points, hard pace)",
+		"meter": "METER - deploy instruments (+3 points on every later walk)"
+	}
+	var y := 230.0
+	for tool in ["camera", "drill", "meter"]:
+		var t: String = tool
+		var b := Pix.btn(overlay, "%s  %s" % [t.to_upper(), "SELECTED" if t in tools else ""],
+			Vector2(330, y), Vector2(620, 44), func(): _toggle_tool(t))
+		b.add_theme_font_size_override("font_size", 14)
+		if t in tools:
+			b.modulate = Color(0.5, 1.0, 0.7)
+		Pix.lbl(overlay, String(descs[t]), Vector2(350, y + 48), Vector2(580, 20), 12, Pix.DIM)
+		y += 82.0
+	Pix.lbl(overlay, "Choose exactly 2 of 3 tools.", Vector2(330, 478), Vector2(620, 20), 13, Pix.DIM)
+	Pix.btn(overlay, "CONFIRM >", Vector2(700, 512), Vector2(220, 46), confirm_prep)
+
+func _toggle_tool(t: String) -> void:
+	if t in tools:
+		if tools.size() > 1:
+			tools.erase(t)
+	elif tools.size() < 2:
+		tools.append(t)
+	_show_prep_panel()
+
+func confirm_prep() -> void:
+	if tools.size() != 2:
+		return
+	in_prep = false
+	Pix.clear(overlay)
 	begin_walk()
+
+func _nearest_item(radius: float) -> int:
+	var best := -1
+	var best_d := radius
+	for i in items.size():
+		var it: Dictionary = items[i]
+		if pl.distance_to(it["pos"]) < best_d:
+			best_d = pl.distance_to(it["pos"])
+			best = i
+	return best
+
+func _nearest_outcrop(radius: float) -> int:
+	var best := -1
+	var best_d := radius
+	for i in outcrops.size():
+		if i in core_done:
+			continue
+		if pl.distance_to(outcrops[i]) < best_d:
+			best_d = pl.distance_to(outcrops[i])
+			best = i
+	return best
+
+func _nearest_deploy_site(radius: float) -> int:
+	var best := -1
+	var best_d := radius
+	for i in deploy_sites.size():
+		if i in deploy_used:
+			continue
+		if pl.distance_to(deploy_sites[i]) < best_d:
+			best_d = pl.distance_to(deploy_sites[i])
+			best = i
+	return best
+
+func _task_seconds(kind: String) -> float:
+	return float(GameState.activities()["game"]["surface"]["tasks"][kind]["time_s"])
+
+func _start_hold(kind: String, idx: int) -> void:
+	hold_kind = kind
+	hold_idx = idx
+	task_hold = 0.0
+
+func _process_hold(delta: float) -> void:
+	task_hold += delta
+	var pace := "hard" if hold_kind == "core" else "easy"
+	var applied := suit.step(delta, pace, false)
+	hud_label.text = "WALK %d/%d  Time %02d  Stamina %d%%  %s" % [
+		walk_idx, walks_total, int(maxf(0.0, t_left)), int(suit.fraction() * 100.0), String(applied).to_upper()]
+	var label: String = {"document": "Photographing", "core": "Drilling core", "deploy": "Deploying"}.get(hold_kind, "Working")
+	info.text = "%s... %d%%" % [label, int(minf(1.0, task_hold / _task_seconds(hold_kind)) * 100.0)]
+	if task_hold >= _task_seconds(hold_kind):
+		_complete_hold()
+
+func _complete_hold() -> void:
+	match hold_kind:
+		"document":
+			if hold_idx >= 0 and hold_idx < items.size():
+				items[hold_idx]["documented"] = true
+				info.text = "Sample site photographed. Collect it for x1.5 points."
+		"core":
+			if hold_idx >= 0 and hold_idx < outcrops.size() and not (hold_idx in core_done):
+				core_done.append(hold_idx)
+				var bonus := 2.0 * float(res["regolith"]["pts"])
+				points += bonus
+				info.text = "Core sample drilled: +%d pts." % int(bonus)
+		"deploy":
+			if hold_idx >= 0 and hold_idx < deploy_sites.size() and not (hold_idx in deploy_used):
+				deploy_used.append(hold_idx)
+				deployed_count += 1
+				info.text = "Instrument deployed. +3 pts on every later walk."
+	hold_kind = ""
+	task_hold = 0.0
+	hold_idx = -1
+
+func _check_hold_keys() -> void:
+	if Input.is_key_pressed(KEY_E):
+		var site := _nearest_deploy_site(TASK_RANGE)
+		if site >= 0:
+			_start_hold("deploy", site)
+			return
+		var outcrop := _nearest_outcrop(TASK_RANGE)
+		if outcrop >= 0 and "drill" in tools:
+			_start_hold("core", outcrop)
+			return
+	if Input.is_key_pressed(KEY_F):
+		if "camera" in tools:
+			var it := _nearest_item(DOC_RANGE)
+			if it >= 0 and not bool(items[it].get("documented", false)):
+				_start_hold("document", it)
 
 # ---------- T18 walk lifecycle ----------
 
@@ -83,9 +236,16 @@ func begin_walk() -> void:
 	in_rest = false
 	in_final = false
 	done = false
+	jettison_open = false
 	Pix.clear(overlay)
+	core_done.clear()
 	t_left = GameState.eva_seconds * _time_mult
 	t_total = t_left
+	if walk_idx > 1:
+		var bonus := deployed_count * int(GameState.activities()["game"]["surface"]["tasks"]["deploy"]["points_per_later_eva"])
+		points += float(bonus)
+		if bonus > 0:
+			info.text = "Deployed instruments: +%d pts this walk." % bonus
 	_walk_start_pts = points
 	suit = Stamina.create(_life_name, GameState.has_module("exercise"), GameState.stamina_capacity_mult())
 
@@ -93,10 +253,14 @@ func end_walk(reason: String) -> void:
 	if done:
 		return
 	done = true
+	hold_kind = ""
+	task_hold = 0.0
+	hold_idx = -1
 	var elapsed := clampf(t_total - maxf(0.0, t_left), 0.0, t_total)
 	total_elapsed += elapsed
 	total_btu += suit.capacity_btu - suit.energy_btu
 	walk_points.append(points - _walk_start_pts)
+	_final_reason = reason
 	if walk_idx < walks_total:
 		_show_rest_panel(reason)
 	else:
@@ -146,9 +310,64 @@ func _show_final_panel(reason: String) -> void:
 		Pix.lbl(overlay, "%s  x%d  = %d pts" % [String(res[k]["name"]), int(counts.get(k, 0)), int(counts.get(k, 0)) * int(res[k]["pts"])],
 			Vector2(370, y), Vector2(300, 22), 15, Pix.DIM)
 		y += 22.0
-	Pix.btn(overlay, "BACK TO SHIP >", Vector2(370, 448), Vector2(260, 50), func():
-		GameState.finish_explore(points, counts, total_btu, food_kcal, total_elapsed, 0.0, walk_points.duplicate(), 0)
+	Pix.lbl(overlay, "Samples: %d pieces (%.0f kg). Mass counts against the return burn." % [_piece_total(), _sample_kg()],
+		Vector2(370, 396), Vector2(540, 22), 14, Pix.DIM)
+	Pix.btn(overlay, "JETTISON SAMPLES", Vector2(370, 448), Vector2(250, 50), func(): _show_jettison())
+	Pix.btn(overlay, "BACK TO SHIP >", Vector2(640, 448), Vector2(210, 50), func():
+		GameState.finish_explore(points, counts, total_btu, food_kcal, total_elapsed, _sample_kg(), walk_points.duplicate(), deployed_count)
 		go("flight"))
+
+func _piece_total() -> int:
+	var total := 0
+	for k in counts:
+		total += int(counts[k])
+	return total
+
+func _sample_kg() -> float:
+	return float(_piece_total()) * float(GameState.activities()["game"]["surface"].get("sample_kg_per_piece", 5.0))
+
+func _show_jettison() -> void:
+	jettison_open = true
+	Pix.clear(overlay)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	Pix.panel(overlay, Vector2(320, 130), Vector2(640, 460))
+	Pix.lbl(overlay, "JETTISON SAMPLES", Vector2(350, 148), Vector2(580, 36), 26, Pix.WARN)
+	Pix.lbl(overlay, "Lighter is safer, but dropped samples lose their science. Real basis: Apollo 17 returned 110.4 kg.",
+		Vector2(350, 190), Vector2(580, 30), 13, Pix.DIM)
+	var y := 240.0
+	var any := false
+	for k in ["ice", "regolith", "ilmenite", "helium3"]:
+		if int(counts.get(k, 0)) <= 0:
+			continue
+		any = true
+		var kk: String = k
+		var b := Pix.btn(overlay, "%s x%d: %s" % [String(res[k]["name"]), int(counts[k]), "KEEP" if bool(keep_flags[k]) else "DROP"],
+			Vector2(350, y), Vector2(580, 44), func(): _toggle_keep(kk))
+		if not bool(keep_flags[kk]):
+			b.modulate = Color(1.0, 0.5, 0.5)
+		y += 52.0
+	if not any:
+		Pix.lbl(overlay, "No samples on board.", Vector2(350, y), Vector2(580, 24), 14, Pix.DIM)
+		y += 40.0
+	Pix.btn(overlay, "DONE", Vector2(700, 516), Vector2(200, 46), func():
+		_apply_jettison())
+
+func _toggle_keep(k: String) -> void:
+	keep_flags[k] = not bool(keep_flags[k])
+	_show_jettison()
+
+func _apply_jettison() -> void:
+	for k in keep_flags:
+		if not bool(keep_flags[k]) and int(counts.get(k, 0)) > 0:
+			points -= float(counts[k]) * float(res[k]["pts"])
+			counts[k] = 0
+	jettison_open = false
+	_show_final_panel(_final_reason)
 
 func _spawn(rng: RandomNumberGenerator) -> void:
 	# Ice: inside craters.
@@ -171,7 +390,7 @@ func _spawn(rng: RandomNumberGenerator) -> void:
 		items.append(_item("regolith", p))
 
 func _item(type: String, p: Vector2) -> Dictionary:
-	return {"type": type, "pos": p, "pts": float(res[type]["pts"]), "slow": type == "ice" or type == "helium3"}
+	return {"type": type, "pos": p, "pts": float(res[type]["pts"]), "slow": type == "ice" or type == "helium3", "documented": false}
 
 func _in_crater_point(rng: RandomNumberGenerator) -> Vector2:
 	var c: Dictionary = craters[rng.randi() % craters.size()]
@@ -192,6 +411,19 @@ func _process(delta: float) -> void:
 	if done:
 		return
 	t_left -= delta
+	if hold_kind != "":
+		_process_hold(delta)
+	else:
+		_process_movement(delta)
+	if suit.is_empty():
+		end_walk("The suit ran out of energy. The crew had to stop.")
+	elif t_left <= 0.0:
+		end_walk("The EVA clock ran out.")
+	elif Input.is_key_pressed(KEY_SPACE):
+		end_walk("The crew returned to the lander early.")
+	queue_redraw()
+
+func _process_movement(delta: float) -> void:
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		dir.x -= 1
@@ -218,23 +450,19 @@ func _process(delta: float) -> void:
 	for it in items.duplicate():
 		if pl.distance_to(it["pos"]) < PICKUP:
 			items.erase(it)
-			points += float(it["pts"])
+			var mult := 1.5 if bool(it.get("documented", false)) else 1.0
+			var gained := float(it["pts"]) * mult
+			points += gained
 			counts[it["type"]] += 1
 			Sfx.play("pickup")
-			info.text = "%s  +%d pts" % [String(res[it["type"]]["name"]), int(it["pts"])]
+			info.text = "%s  +%.0f pts%s" % [String(res[it["type"]]["name"]), gained, "  (photographed x1.5)" if mult > 1.0 else ""]
+	_check_hold_keys()
 	var reserve: bool = suit.in_reserve()
 	hud_label.text = "WALK %d/%d  Time %02d  Stamina %d%%  %s%s" % [
 		walk_idx, walks_total, int(maxf(0.0, t_left)), int(suit.fraction() * 100.0), String(applied).to_upper(),
 		"  RESERVE" if reserve else ""]
 	hud_label.add_theme_color_override("font_color", Pix.BAD if reserve else Pix.WARN)
 	count_label.text = _counts_text()
-	if suit.is_empty():
-		end_walk("The suit ran out of energy. The crew had to stop.")
-	elif t_left <= 0.0:
-		end_walk("The EVA clock ran out.")
-	elif Input.is_key_pressed(KEY_SPACE):
-		end_walk("The crew returned to the lander early.")
-	queue_redraw()
 
 func _counts_text() -> String:
 	var parts: Array = []
@@ -274,6 +502,18 @@ func draw_extra() -> void:
 	draw_rect(Rect2(pl.x - 8, pl.y - 18, 16, 20), Color("f2f2f2"))
 	draw_rect(Rect2(pl.x - 6, pl.y - 26, 12, 10), Color("ffe8b0"))
 	draw_rect(Rect2(pl.x - 4, pl.y - 24, 8, 5), Color("1fb6ff"))
+	# T18: deploy sites (posts) and drilled outcrops
+	for i in deploy_sites.size():
+		var s: Vector2 = deploy_sites[i]
+		var used := i in deploy_used
+		draw_rect(Rect2(s.x - 6, s.y - 14, 12, 12), Pix.GOOD if used else Pix.WARN)
+		draw_rect(Rect2(s.x - 1, s.y - 14, 2, 20), Color("e8f1ff"))
+	for oi in core_done:
+		draw_circle(outcrops[oi], 9, Color("d98a3d"))
+	# documented marker (small ring above the sample)
+	for it in items:
+		if bool(it.get("documented", false)):
+			draw_circle(Vector2(it["pos"].x, it["pos"].y - 16), 5, Color("7fe3ff"))
 	# suit stamina bar (top right, under the clock)
 	if suit != null:
 		var f := clampf(suit.fraction(), 0.0, 1.0)

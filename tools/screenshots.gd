@@ -95,7 +95,18 @@ func _run() -> void:
 			break
 		if r.get("kind", "") == "end":
 			break
-	await _shot("08_explore", "explore")
+	var explore_node = await _open("explore")
+	explore_node.confirm_prep()
+	await _frames(2)
+	await _capture("08_explore")
+	explore_node.end_walk("screenshot: rest panel")
+	await _frames(2)
+	await _capture("22_rest_panel")
+	await _close(explore_node)
+	var explore_prep = await _open("explore")
+	await _frames(2)
+	await _capture("23_prep_panel")
+	await _close(explore_prep)
 	gs.finish_explore(70.0, {"ice": 2, "regolith": 5, "ilmenite": 1, "helium3": 0}, 5400.0, 1200.0, 75.0)
 	guard = 0
 	while guard < 40:

@@ -60,6 +60,18 @@ func build() -> void:
 	for t in sup:
 		Pix.lbl(self, t, Vector2(654, sy), Vector2(590, 18), 12, Pix.DIM)
 		sy += 18.0
+	# T18: samples returned, instrument deploys, points per walk
+	var walks: Array = r.get("walks_log", [])
+	if not walks.is_empty():
+		var wtxt := "Points by walk: "
+		for i in walks.size():
+			wtxt += str(int(walks[i])) + ("  |  " if i < walks.size() - 1 else "")
+		Pix.lbl(self, wtxt, Vector2(654, sy), Vector2(590, 18), 12, Pix.DIM)
+		sy += 18.0
+	Pix.lbl(self, "Samples returned: %.0f kg (%d pieces)  |  Instruments deployed: %d" % [
+		float(r.get("sample_kg", 0.0)), _piece_count(r), int(r.get("deploys", 0))],
+		Vector2(654, sy), Vector2(590, 18), 12, Pix.DIM)
+	sy += 18.0
 	# moon samples collected during the EVA
 	Pix.lbl(self, _samples_text(r), Vector2(20, 506), Vector2(1240, 44), 15, Pix.TEXT)
 	# decisions + score
@@ -101,3 +113,10 @@ func _samples_text(r: Dictionary) -> String:
 		total += pts
 		parts.append("%s x%d = %d" % [res[k]["name"], n, pts])
 	return "MOON SAMPLES (%d s EVA):  %s  |  total %d pts" % [int(float(r.get("eva_time", GameState.eva_seconds))), "  |  ".join(PackedStringArray(parts)), total]
+
+func _piece_count(r: Dictionary) -> int:
+	var counts: Dictionary = r.get("explore_counts", {})
+	var total := 0
+	for k in counts:
+		total += int(counts[k])
+	return total

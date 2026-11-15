@@ -299,6 +299,8 @@ func _test_t18() -> void:
 		var node: Node = packed.instantiate()
 		root.add_child(node)
 		_check(node.is_inside_tree(), "explore scene becomes ready")
+		_check(bool(node.get("in_prep")), "prep panel shows before the first walk")
+		node.call("confirm_prep")
 		var wi = node.get("walk_idx")
 		_check(wi != null and int(wi) == 1, "first walk starts at index 1 (got %s)" % str(wi))
 		_check(node.get("suit") != null, "a fresh suit exists for walk 1")

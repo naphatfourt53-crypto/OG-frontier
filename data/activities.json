@@ -38,11 +38,13 @@
         "deploy":   { "time_s": 4, "points_per_later_eva": 3 }
       },
       "rover": { "key": "R", "speed_multiplier": 2.0, "battery_s": 45, "blocked_in_craters": true },
-      "sample_return_mass_penalty": true
+      "sample_return_mass_penalty": true,
+      "sample_kg_per_piece": 5.0
     }
   },
   "tags": {
     "real_basis": "real",
-    "game": "game"
+    "game": "game",
+    "game.surface.sample_kg_per_piece": "game"
   }
 }
