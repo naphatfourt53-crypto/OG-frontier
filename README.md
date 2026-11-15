@@ -20,14 +20,36 @@
 โปรเจกต์ไม่มี addon, ไม่มีปลั๊กอิน, ไม่มี C#, ไม่มีไลบรารีภายนอก
 รูปถ่าย NASA 4 รูปถูก import ไว้แล้ว (ดู [`assets/CREDITS.md`](assets/CREDITS.md))
 
-## 2) เปิดเกม
+## 2) เปิดเกม (3 วิธี)
 
-1. เปิด Godot 4.7.2 → **Import** → เลือก `project.godot` → **Import & Edit**
-2. รอ import ครั้งแรกสักครู่ (จะสร้างโฟลเดอร์ `.godot/` ซึ่งไม่ถูก commit)
-3. กด **F5** หรือปุ่ม ▶ มุมขวาบน เกมเริ่มที่ `scenes/menu.tscn`
+> **อ่านก่อน:** โฟลเดอร์ที่ถูกต้องคือโฟลเดอร์ที่มี `project.godot` อยู่ข้างใน
+> ถ้าเปิดแล้ว FileSystem ว่างและขึ้น `Can't open file 'menu.tscn'`
+> แปลว่าเปิดโฟลเดอร์แม่ (ที่มีแค่ `data/docs/scripts/tools`) ไม่ใช่ตัวโปรเจกต์
 
+### 2.1 เล่นอย่างเดียว — Windows
+
+- แตก `LastLaunch_v0.4.1_Windows.zip` ให้ครบ แล้วดับเบิลคลิก `RUN_LAST_LAUNCH.bat`
+- ถ้า SmartScreen เตือน: **More info → Run anyway**
+- ถ้าขึ้น `Unable to initialize video driver` หรือจอดำ: ลอง `RUN_LAST_LAUNCH_SAFE.bat`
+- ถ้ายังไม่ได้: ใช้เวอร์ชันเว็บ (2.2) ซึ่งไม่ต้องใช้ไดรเวอร์การ์ดจอ
+
+### 2.2 เล่นบนเครื่องเก่า / การ์ดจอไม่รองรับ — Web
+
+- แตก `LastLaunch_v0.4.1_Web.zip` แล้วดับเบิลคลิก `PLAY_WEB.bat`
+- **อย่าดับเบิลคลิก `index.html`** เพราะเบราว์เซอร์โหลด `.pck/.wasm` จาก `file://` ไม่ได้
+- ใช้ Chrome หรือ Edge รุ่นใหม่ — เบราว์เซอร์มี software WebGL จึงเปิดได้แม้ไดรเวอร์เก่า
+
+### 2.3 แก้โค้ด — Godot 4.7.2
+
+1. แตก ZIP แล้วเข้าโฟลเดอร์ที่มี `project.godot` (หรือดับเบิลคลิก `OPEN_IN_GODOT.bat`)
+2. รอ import ครั้งแรกสักครู่ (จะสร้าง `.godot/` ซึ่งไม่ถูก commit)
+3. กด **F5** หรือปุ่ม ▶ เกมเริ่มที่ `scenes/menu.tscn`
+
+> ถ้า editor เปิดไม่ขึ้นเพราะไดรเวอร์ ให้ใช้ `OPEN_IN_GODOT_SAFE.bat`
 > ถ้าเปิดด้วย Godot 4.3–4.6 จะมี warning เรื่อง `config/features="4.7"`
 > แนะนำให้ใช้ 4.7.2 ตามที่ทีม pin ไว้
+
+คู่มือแจกเกม/แก้ error ทั้งหมด: [`docs/TEAM_GUIDE.md`](docs/TEAM_GUIDE.md)
 
 ## 3) วิธีเล่น (5 นาทีแรก)
 
@@ -172,26 +194,61 @@ python3 tools/balance_check.py --emit-golden
 
 ## 6) Export (เว็บ / Windows)
 
-มี `export_presets.cfg` เตรียมไว้แล้ว 2 preset: **Web** และ **Windows Desktop**
-ปลายทางอยู่ที่ `builds/web/` และ `builds/windows/` (ถูก ignore)
-เครื่องที่ทำ repo นี้ติดตั้ง export templates 4.7.2 แล้ว และ **build ผ่านทั้งสอง preset**
+มี `export_presets.cfg` เตรียมไว้ 2 preset: **Web** และ **Windows Desktop**
+
+- Windows **ฝัง `.pck` ไว้ใน exe แล้ว** (`binary_format/embed_pck=true`) — ส่งไฟล์เดียวจบ
+- `RUN_LAST_LAUNCH.bat` **ลองเปิดซ้ำด้วย OpenGL 3.3 ให้อัตโนมัติ** ถ้ารอบแรก
+  (Vulkan / Forward+) ขึ้น "Unable to initialize video driver"
+- ไม่ตั้ง `gl_compatibility` เป็นค่าเริ่มต้นใน `project.godot` เพราะเครื่องที่ไม่มี
+  ไดรเวอร์ OpenGL 3.3 จะเปิด editor ไม่ได้เลย (เครื่องที่ทดสอบอยู่ก็เป็นแบบนั้น)
+  การเลือก renderer จึงเป็นหน้าที่ของ launcher/flag ไม่ใช่ค่าถาวรของโปรเจกต์
+- Web ตั้ง `thread_support=false` จึงไม่ต้องตั้ง COOP/COEP header
+  (เกมนี้ไม่ใช้ SharedArrayBuffer)
+
+### 6.1 สร้างแพ็กเกจแจกทีม (แนะนำ)
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\package_team.ps1
+```
+
+ได้ไฟล์ใน `dist/` พร้อม checksum:
+
+```text
+LastLaunch_v0.4.1_Project.zip    # เปิดใน Godot (project.godot อยู่บนสุด)
+LastLaunch_v0.4.1_Windows.zip    # RUN_LAST_LAUNCH.bat
+LastLaunch_v0.4.1_Web.zip        # PLAY_WEB.bat (เครื่องเก่า)
+LastLaunch_Legacy_v0.1.0_Project.zip
+SHA256SUMS.txt / START_HERE.txt / README_UPLOAD.md
+```
+
+### 6.2 Export เอง
 
 1. ถ้าเครื่องใหม่ยังไม่มี template: Godot → **Editor → Manage Export Templates → Download and Install**
 2. **Project → Export…** → เลือก preset → **Export Project**
-   (หรือใช้ command line ตามหัวข้อ 8 ใน `OVERNIGHT_LOG.md`)
-3. Web: ต้องเสิร์ฟผ่าน HTTP(S) เท่านั้น เปิดไฟล์ `.html` ด้วยการดับเบิลคลิกจะไม่ทำงาน
-   (`file://` ถูกบล็อก) — อัปโหลดขึ้น itch.io ช่อง "HTML5" หรือรันเซิร์ฟเวอร์ในโฟลเดอร์นั้น
-4. Web preset ตั้ง `thread_support=false` ไว้ เพื่อให้อัปโหลดง่ายและไม่ต้องตั้ง
-   COOP/COEP header (เกมนี้ไม่ต้องใช้ SharedArrayBuffer)
-5. `builds/` ไม่ถูก commit — ถ้าจะส่งไฟล์ ให้ zip โฟลเดอร์ `builds/web` ทั้งโฟลเดอร์
-   (ไม่ใช่แค่ `index.html`) หรือส่ง `builds/windows` ทั้งคู่ `.exe` + `.pck`
+3. Command line:
+
+   ```powershell
+   & $godot --headless --path . --export-release "Web" "builds/web/index.html"
+   & $godot --headless --path . --export-release "Windows Desktop" "builds/windows/OGFrontier.exe"
+   ```
+
+4. Web ต้องเสิร์ฟผ่าน HTTP(S) — ใช้ `PLAY_WEB.bat` (มี server ในตัว) หรือ `python -m http.server`
+   **อย่าดับเบิลคลิก `index.html`** เพราะ `file://` ถูกบล็อก
+5. อย่า commit `builds/` หรือ `.exe` (exe ใหญ่เกิน 100 MB ของ GitHub)
+   ให้อัปโหลด ZIP เป็น **GitHub Release** (tag `v0.4.1`) แล้วส่งลิงก์ให้ทีม
 
 ## 7) โครงสร้างโปรเจกต์
 
 ```text
 ogfrontier/
 ├── project.godot            # ตั้งค่าโปรเจกต์ (features = 4.7)
-├── export_presets.cfg       # Web + Windows Desktop
+├── export_presets.cfg       # Web + Windows Desktop (embed pck)
+├── OPEN_IN_GODOT.bat        # เปิดโปรเจกต์ให้ถูกโฟลเดอร์
+├── OPEN_IN_GODOT_SAFE.bat   # เปิดด้วย OpenGL 3.3 ถ้าไดรเวอร์มีปัญหา
+├── START_HERE.txt           # อ่านก่อนเปิดเกม
+├── docs/TEAM_GUIDE.md       # คู่มือแจกเกม + แก้ error
+├── tools/package_team.ps1   # สร้าง ZIP แจกทีม (Project/Windows/Web/Legacy)
+├── tools/launchers/         # bat/ps1 ที่ใส่ในแพ็กเกจ
 ├── data/game_data.json      # ตัวเลขเกมทั้งหมด
 ├── data/farm.json           # ตัวเลข greenhouse (NASA BVAD)
 ├── data/stamina.json        # EVA stamina / pace

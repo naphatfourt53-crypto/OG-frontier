@@ -2,6 +2,41 @@
 
 รูปแบบอ้างอิง [Keep a Changelog](https://keepachangelog.com/) และ semantic versioning
 
+## [0.4.1] - 2026-11-15
+
+แพ็กเกจสำหรับแจกทีม: แก้ปัญหาเปิดโปรเจกต์ผิดโฟลเดอร์, เครื่องเก่าเปิด exe ไม่ได้
+และเพิ่มช่องทางเล่นผ่านเว็บที่ไม่ต้องใช้ไดรเวอร์การ์ดจอ
+
+### Added
+
+- **`START_HERE.txt`** และ **`docs/TEAM_GUIDE.md`**: ขั้นตอนเปิดเกม 3 ทาง
+  (Windows / Web / Godot) พร้อมตารางแก้ error ที่ทีมเจอจริง
+- **`OPEN_IN_GODOT.bat`** / **`OPEN_IN_GODOT_SAFE.bat`**: ตรวจว่าอยู่โฟลเดอร์ที่มี
+  `project.godot` แล้วเปิด editor ให้ (safe mode บังคับ OpenGL 3.3)
+- **`tools/package_team.ps1`**: สร้าง ZIP แจกทีมครบชุด
+  (Project / Windows / Web / Legacy) + `SHA256SUMS.txt`
+- **`tools/launchers/`**: `RUN_LAST_LAUNCH.bat` (ลอง Vulkan → OpenGL 3.3 ให้อัตโนมัติ),
+  `RUN_LAST_LAUNCH_SAFE.bat` (บังคับ OpenGL 3.3),
+  `PLAY_WEB.bat` + `serve_web.ps1` (local server ในตัว ไม่ต้องมี Python)
+- แพ็กเกจ **Legacy v0.1.0** จาก commit แรก (ต้นฉบับ 7 หน้าจอ) สำหรับเทียบพัฒนาการ
+
+### Changed
+
+- **`RUN_LAST_LAUNCH.bat` เลือก renderer ให้เอง**: เปิดด้วย Vulkan ก่อน ถ้าไม่ขึ้น
+  จะลอง OpenGL 3.3 แล้วค่อยบอกให้ไปใช้เวอร์ชันเว็บ — ไม่ต้องตั้ง `gl_compatibility`
+  เป็นค่าเริ่มต้นของโปรเจกต์ (เครื่องที่ไม่มี OpenGL 3.3 จะเปิด editor ไม่ได้)
+- Windows export **ฝัง `.pck` ใน exe** (`embed_pck=true`) — แจกแล้วไม่ต้องก็อป `.pck` แยก
+- เพิ่ม `config/version="0.4.1"`
+- README/AGENTS อัปเดตวิธีเปิดเกม การ build และการแจกไฟล์
+
+### Fixed
+
+- เปิดโปรเจกต์ในโฟลเดอร์แม่ (ที่มีแค่ `data/docs/scripts` จาก addon zip)
+  ทำให้ FileSystem ว่างและขึ้น `Can't open file 'menu.tscn'` — ตอนนี้มีสคริปต์ตรวจและคู่มือ
+- Windows SmartScreen และ error `Unable to initialize video driver`
+  มีคู่มือ + ทางออกเว็บที่ใช้ software WebGL
+- ดับเบิลคลิก `index.html` แล้วเกมไม่ขึ้น — `PLAY_WEB.bat` เปิด local server ให้อัตโนมัติ
+
 ## [0.4.0] - 2026-11-15
 
 เดโมตาม brief ใหม่: Earth กำลังร้อน, ISS เป็น lobby, ปลูกอาหาร, ออกแบบยานตามจุดหมาย

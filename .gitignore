@@ -18,3 +18,7 @@ desktop.ini
 
 # Local test output
 tests/out/
+
+# Team distribution (built zips, too large for git)
+dist/
+

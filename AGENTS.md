@@ -44,6 +44,10 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 # 5. build (templates 4.7.2 ติดตั้งแล้วในเครื่องนี้)
 & $godot --headless --path . --export-release "Web" "builds/web/index.html"
 & $godot --headless --path . --export-release "Windows Desktop" "builds/windows/OGFrontier.exe"
+
+# 6. แพ็กเกจแจกทีม (Project / Windows / Web / Legacy + SHA256)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\package_team.ps1
+#    ผลลัพธ์: dist/*.zip, dist/SHA256SUMS.txt, dist/START_HERE.txt
 ```
 
 หมายเหตุสภาพเครื่องนี้:
@@ -75,6 +79,12 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 | `scripts/farm.gd` | greenhouse crop math (NASA BVAD) |
 | `scripts/stamina.gd` | EVA stamina model (Btu, pace, reserve) |
 | `scripts/physics.gd` | orbital mechanics + solar flux |
+| `OPEN_IN_GODOT.bat` | เปิดโปรเจกต์ให้ถูกโฟลเดอร์ (มี `project.godot`) |
+| `OPEN_IN_GODOT_SAFE.bat` | เปิด editor ด้วย OpenGL 3.3 ถ้าไดรเวอร์มีปัญหา |
+| `START_HERE.txt` | คำแนะนำสั้นสำหรับทีม |
+| `docs/TEAM_GUIDE.md` | คู่มือแจกเกม + ตารางแก้ error |
+| `tools/package_team.ps1` | สร้าง ZIP แจกทีม + checksum |
+| `tools/launchers/` | `RUN_LAST_LAUNCH*.bat`, `PLAY_WEB.bat`, `serve_web.ps1` |
 | `data/game_data.json` | ข้อมูลทั้งหมด |
 | `data/farm.json`, `data/stamina.json`, `data/physics.json` | ตัวเลขระบบใหม่ |
 | `tools/screenshots.gd` | harness ถ่ายภาพ (SceneTree script) |
@@ -113,6 +123,8 @@ Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report
 - [ ] ถ้าแตะเสียง: `AUDIO OK (7 sounds)` จาก `tools/audio_check.gd`
 - [ ] ถ้าแตะสูตร/คะแนน: `balance_check.py` ตรงกับ GDScript และ commit `tests/golden.json`
 - [ ] ถ้าแตะ save: เซฟเก่ายังโหลดได้ (มีเทสต์ใน smoke test)
+- [ ] ถ้าแตะ build/packaging: รัน `tools/package_team.ps1` แล้วแตก ZIP ตรวจว่า
+      `project.godot` อยู่บนสุด, exe เปิดได้, และ Web มี `PLAY_WEB.bat` + `index.wasm`
 - [ ] อัปเดต `CHANGELOG.md` และ `OVERNIGHT_LOG.md` (ถ้าเป็นงานคืนนี้)
 - [ ] commit message รูปแบบ `feat|fix|docs|test|chore(scope): ...`
 
@@ -123,6 +135,16 @@ Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report
 - ใช้ `queue_free()` แล้วอ้าง node ในเฟรมเดียวกัน → "previously freed instance"
 - แก้ `size` ของ Control ที่ anchor เต็มจอ → warning "was not set to full rect"
 - เปิดไฟล์ `.html` ของ Web export ด้วย `file://` → จอดำ (ต้องใช้ HTTP server)
+- เปิดโฟลเดอร์แม่ที่มีแค่ `data/docs/scripts` ใน Godot → FileSystem ว่าง /
+  "Can't open file 'menu.tscn'" (ต้องเปิดโฟลเดอร์ที่มี `project.godot`)
+- **Renderer**: เครื่องที่ใช้ทดสอบนี้ **ไม่มี OpenGL 3.3 และ ANGLE/D3D11 ก็ใช้ไม่ได้**
+  (Vulkan ใช้ได้) จึงห้ามตั้ง `rendering_method="gl_compatibility"` ใน `project.godot`
+  เพราะ editor จะเปิดไม่ได้ — ให้เลือก renderer ที่ launcher แทน
+  (`RUN_LAST_LAUNCH.bat`: Vulkan → OpenGL 3.3 → แนะนำเวอร์ชันเว็บ)
+- **`project.godot` เป็น ConfigFile**: comment ใช้ `;` เท่านั้น ถ้าใส่ `#`
+  ตัวแปรในบรรทัดถัด ๆ ไปจะถูกอ่านข้าม (เคยทำให้ setting renderer หายไปเงียบ ๆ)
+- **อย่าใช้ `tar.exe` กับ path ที่มีอักษรไทย** (`package_team.ps1` จึงใช้
+  `git archive --format=zip` แล้วแตกด้วย .NET)
 - รัน Python ด้วย `python` เฉยๆ ในเครื่องนี้ → ค้าง (ใช้ path เต็ม)
 
 ## 8) คำถามที่ยังเปิดอยู่

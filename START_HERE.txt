@@ -1,0 +1,37 @@
+LAST LAUNCH / OG-FRONTIER v0.4.1
+================================
+
+อ่านไฟล์นี้ก่อนเปิดเกม
+
+ปัญหาที่ทีมเจอบ่อย
+------------------
+1) เปิดใน Godot แล้วไม่เห็นไฟล์ / ขึ้น "Can't open file 'menu.tscn'"
+   สาเหตุ: เปิดผิดโฟลเดอร์
+   ต้องเปิดโฟลเดอร์ที่มีไฟล์ project.godot อยู่ข้างใน (โฟลเดอร์ ogfrontier)
+   ไม่ใช่โฟลเดอร์แม่ที่มีแค่ data / docs / scripts / tools
+
+   วิธีที่ปลอดภัย: ดับเบิลคลิก OPEN_IN_GODOT.bat
+   ถ้า editor ขึ้น error ไดรเวอร์: ดับเบิลคลิก OPEN_IN_GODOT_SAFE.bat
+
+2) เปิด OGFrontier.exe แล้ว Windows ไม่ให้เปิด
+   - แตก ZIP ให้ครบก่อน อย่าเปิดจากใน ZIP
+   - ถ้า SmartScreen ขึ้น "Windows protected your PC"
+     คลิก More info -> Run anyway
+   - ถ้าขึ้น "Unable to initialize video driver" หรือจอดำ
+     สคริปต์จะลอง OpenGL 3.3 ให้เอง (กด OK ที่กล่องข้อความก่อน)
+     ถ้ายังไม่ได้ ลอง RUN_LAST_LAUNCH_SAFE.bat
+     ถ้ายังไม่ได้อีก ให้ใช้เวอร์ชันเว็บ (PLAY_WEB.bat) ซึ่งไม่ต้องใช้ไดรเวอร์การ์ดจอ
+
+3) ดับเบิลคลิก index.html แล้วเกมไม่ขึ้น
+   ถูกต้องแล้ว - เบราว์เซอร์โหลดไฟล์ .pck / .wasm จาก file:// ไม่ได้
+   ให้ดับเบิลคลิก PLAY_WEB.bat แทน (จะเปิด localhost ให้อัตโนมัติ)
+
+ทางเลือกในการเล่น
+-----------------
+- Windows : LastLaunch_v0.4.1_Windows.zip  -> RUN_LAST_LAUNCH.bat
+- เว็บ     : LastLaunch_v0.4.1_Web.zip      -> PLAY_WEB.bat  (แนะนำสำหรับเครื่องเก่า)
+- แก้โค้ด : LastLaunch_v0.4.1_Project.zip  -> OPEN_IN_GODOT.bat
+- เวอร์ชันเก่า (ต้นฉบับ 7 หน้าจอ): LastLaunch_Legacy_v0.1.0_Project.zip
+
+ต้องใช้ Godot 4.7.2 (Standard ไม่ใช่ .NET) เท่านั้น
+คู่มือละเอียด: docs/TEAM_GUIDE.md
