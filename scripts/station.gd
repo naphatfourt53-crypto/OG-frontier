@@ -70,7 +70,7 @@ func refresh() -> void:
 	_walls.clear()
 	var header: Panel = Pix.panel(ui, Vector2(12, 6), Vector2(1256, 96))
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	Pix.lbl(ui, "ISS LAST LAUNCH - OPERATIONS LOBBY", Vector2(24, 8), Vector2(700, 34), 26, Pix.EDGE)
+	Pix.lbl(ui, "OG-FRONTIER  |  ISS OPERATIONS LOBBY", Vector2(24, 8), Vector2(700, 34), 26, Pix.EDGE)
 	Pix.lbl(ui, "DAY %03d   |   %s   |   ISS LOW EARTH ORBIT   |   EARTH: CRITICAL" % [GameState.day, GameState.date_text()],
 		Vector2(24, 42), Vector2(820, 20), 13, Pix.WARN)
 	Pix.lbl(ui, "Data %d   |   Food %.1f kg   |   Ore %d/%d pts   |   Smelter %.0f%%   |   Best score %d" % [
@@ -79,7 +79,12 @@ func refresh() -> void:
 		Vector2(24, 62), Vector2(900, 20), 13, Pix.TEXT)
 	var guide_bg: Panel = Pix.panel(ui, Vector2(206, 612), Vector2(848, 36))
 	guide_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	Pix.lbl(ui, _next_step(), Vector2(218, 618), Vector2(830, 26), 14, Pix.WARN)
+	_glow(guide_bg, Pix.WARN)
+	Pix.lbl(ui, _next_step(), Vector2(218, 618), Vector2(700, 26), 14, Pix.WARN)
+	# [Go Now] warps straight to the room the guide is asking for.
+	var go_dest := _go_now_dest()
+	if go_dest != "":
+		Pix.btn_primary(ui, "[Go Now] >", Vector2(928, 614), Vector2(120, 32), func(): go(go_dest))
 	for m in GameState.data["station_modules"]:
 		var built: bool = GameState.built.has(m["id"])
 		var parent_ok: bool = m["parent"] == "" or GameState.built.has(m["parent"])
@@ -137,6 +142,27 @@ func _next_step() -> String:
 			return "MISSION 1, STEP 1/3: walk to the HANGAR (E), design a ship. Quick start: LOAD SAMPLE DESIGN."
 		return "MISSION 1, STEP 2/3: walk to MISSION CTRL (E), launch to the MOON, collect ore, come HOME."
 	return "NEXT: read the report. Failed? Fix the ship in the Hangar. Done? Spend Data on rooms (purple +)."
+
+# Where the [Go Now] button sends the player for the current step.
+func _go_now_dest() -> String:
+	var total := 0
+	for v in GameState.design.values():
+		total += int(v)
+	if GameState.history.is_empty():
+		return "hangar" if total <= 0 else "mission"
+	return "hangar" if GameState.station_data < 20 else "mission"
+
+# A soft glow ring around an important panel.
+func _glow(p: Panel, col: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Pix.PANEL
+	sb.set_border_width_all(2)
+	sb.border_color = col
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(col.r, col.g, col.b, 0.55)
+	sb.shadow_size = 14
+	sb.shadow_offset = Vector2.ZERO
+	p.add_theme_stylebox_override("panel", sb)
 
 func _room_body(m: Dictionary, built: bool) -> String:
 	if built:
@@ -261,11 +287,13 @@ func _draw_actor() -> void:
 	actor.draw_rect(Rect2(player.x - 7, player.y - 14, 14, 16), Color("f2f2f2"))
 	actor.draw_rect(Rect2(player.x - 5, player.y - 21, 10, 8), Color("ffe8b0"))
 	actor.draw_rect(Rect2(player.x - 3, player.y - 19, 6, 4), Color("1fb6ff"))
+	# The prompt sits in a fixed banner above the guide line, so it never covers a room name.
 	if near_id != "":
 		var label := _near_name()
-		actor.draw_rect(Rect2(player.x - 110, player.y - 50, 220, 24), Color(0.02, 0.03, 0.08, 0.92))
-		actor.draw_string(ThemeDB.fallback_font, Vector2(player.x - 102, player.y - 33), label,
-			HORIZONTAL_ALIGNMENT_LEFT, 210, 15, Pix.WARN)
+		actor.draw_rect(Rect2(20, 574, 360, 28), Color(0.02, 0.03, 0.08, 0.92))
+		actor.draw_rect(Rect2(20, 574, 4, 28), Pix.WARN)
+		actor.draw_string(ThemeDB.fallback_font, Vector2(34, 593), label,
+			HORIZONTAL_ALIGNMENT_LEFT, 340, 15, Pix.WARN)
 
 # ---------- picture cards on hover ----------
 

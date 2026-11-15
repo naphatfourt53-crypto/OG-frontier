@@ -52,10 +52,12 @@ var ore: Dictionary = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 var skip_save: bool = false
 # Set by Screen.go() so the next screen knows to fade in from black.
 var pending_fade: bool = false
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 
 var _activities: Dictionary = {}
 var harvest_count: int = 0
+var water_store: float = 0.0
+var nutrient_packs: int = 0
 
 func _ready() -> void:
 	var f := FileAccess.open(DATA_PATH, FileAccess.READ)
@@ -90,6 +92,8 @@ func reset_all() -> void:
 	plots = []
 	ore = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 	harvest_count = 0
+	water_store = float(farm_game()["water_kg_start"])
+	nutrient_packs = int(farm_game()["nutrient_packs_start"])
 
 func activities() -> Dictionary:
 	if _activities.is_empty():
@@ -180,7 +184,87 @@ func ensure_plot() -> void:
 	if not plots.is_empty():
 		return
 	var game: Dictionary = Farm.cfg()["game"]
-	plots.append(Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"])))
+	var p := Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"]))
+	p["water_pct"] = 100.0
+	p["nutrient_pct"] = 100.0
+	plots.append(p)
+
+func farm_game() -> Dictionary:
+	return Farm.cfg()["game"]
+
+# Selecting a crop is allowed only while the plot is empty (day 0).
+func set_crop(crop_id: String) -> Dictionary:
+	if not has_module("greenhouse"):
+		return {"ok": false, "text": "Build the Greenhouse in the Habitat first."}
+	ensure_plot()
+	if float(plots[0]["age_days"]) > 0.0:
+		return {"ok": false, "text": "The plot already has a crop growing. Harvest it before choosing another."}
+	var area := float(plots[0]["area_m2"])
+	plots[0] = Farm.new_plot(crop_id, area)
+	plots[0]["water_pct"] = 100.0
+	plots[0]["nutrient_pct"] = 100.0
+	save_game()
+	return {"ok": true, "text": "Planted %s. It takes %d days to harvest." % [Farm.crop(crop_id)["name"], int(Farm.crop(crop_id)["growth_days"])]}
+
+func water_plot() -> Dictionary:
+	if not has_module("greenhouse"):
+		return {"ok": false, "text": "Build the Greenhouse in the Habitat first."}
+	ensure_plot()
+	var kg := float(farm_game()["water_kg_per_refill"])
+	if water_store < kg:
+		return {"ok": false, "text": "No water in the ISS store (%.1f kg left). Buy more in the Habitat." % water_store}
+	water_store -= kg
+	plots[0]["water_pct"] = 100.0
+	save_game()
+	return {"ok": true, "text": "Watered the plot (-%.0f kg). Store: %.1f kg." % [kg, water_store]}
+
+func buy_water() -> Dictionary:
+	var g := farm_game()
+	var cost := int(g["water_data_cost_per_purchase"])
+	if station_data < cost:
+		return {"ok": false, "text": "Not enough Data (need %d, have %d)." % [cost, station_data]}
+	station_data -= cost
+	water_store += float(g["water_kg_per_purchase"])
+	save_game()
+	return {"ok": true, "text": "Bought %d kg of water for %d Data." % [int(g["water_kg_per_purchase"]), cost]}
+
+func buy_nutrients() -> Dictionary:
+	var cost := int(farm_game()["nutrient_data_cost_per_pack"])
+	if station_data < cost:
+		return {"ok": false, "text": "Not enough Data (need %d, have %d)." % [cost, station_data]}
+	station_data -= cost
+	nutrient_packs += 1
+	save_game()
+	return {"ok": true, "text": "Bought 1 nutrient pack for %d Data. Packs: %d." % [cost, nutrient_packs]}
+
+func feed_plot() -> Dictionary:
+	if not has_module("greenhouse"):
+		return {"ok": false, "text": "Build the Greenhouse in the Habitat first."}
+	ensure_plot()
+	if nutrient_packs <= 0:
+		return {"ok": false, "text": "No nutrient packs. Buy one in the Habitat."}
+	nutrient_packs -= 1
+	plots[0]["nutrient_pct"] = 100.0
+	save_game()
+	return {"ok": true, "text": "Added a nutrient pack. Packs left: %d." % nutrient_packs}
+
+# The alert line the greenhouse card shows. Plain words, always one action.
+func greenhouse_alert() -> String:
+	if not has_module("greenhouse"):
+		return "Build the Greenhouse in the Habitat to grow food."
+	ensure_plot()
+	var p: Dictionary = plots[0]
+	var low := float(farm_game()["alert_low_pct"])
+	if Farm.crop_ready(p):
+		return "READY TO HARVEST: press HARVEST for %.1f kg of fresh food." % plot_kg()
+	if float(p["water_pct"]) <= low:
+		return "WATER LOW (%d%%): press WATER now, or the crop stops growing." % int(p["water_pct"])
+	if float(p["nutrient_pct"]) <= low:
+		return "NUTRIENTS LOW (%d%%): press FEED (uses 1 pack). Packs: %d." % [int(p["nutrient_pct"]), nutrient_packs]
+	var drop := float(farm_game()["water_meter_drop_per_day"])
+	var days_left := int((float(p["water_pct"]) - low) / maxf(drop, 1.0))
+	return "All good. Water lasts about %d more days. Growing: day %d of %d." % [
+		days_left, int(p["age_days"]), int(Farm.crop(p["crop"])["growth_days"])]
 
 func plot_ready() -> bool:
 	if plots.is_empty():
@@ -197,14 +281,21 @@ func tend_plot(days: float = 1.0) -> Dictionary:
 		return {"ok": false, "text": "Build the Greenhouse module at the ISS first."}
 	ensure_plot()
 	var cfg := Farm.cfg()
+	var g: Dictionary = cfg["game"]
 	var p: Dictionary = plots[0]
-	Farm.advance_plot(p, days, float(cfg["default_ppfd_umol_m2_s"]),
-		float(cfg["default_photoperiod_h"]), float(cfg["game"]["water_factor_default"]))
-	day += int(round(days))
+	var n := maxi(1, int(round(days)))
+	for i in n:
+		# Growth follows the meters of this day: water and nutrients both matter.
+		var f := clampf(float(p["water_pct"]) * float(p["nutrient_pct"]) / 10000.0, 0.0, 1.0)
+		Farm.advance_plot(p, 1.0, float(cfg["default_ppfd_umol_m2_s"]),
+			float(cfg["default_photoperiod_h"]), f)
+		p["water_pct"] = maxf(0.0, float(p["water_pct"]) - float(g["water_meter_drop_per_day"]))
+		p["nutrient_pct"] = maxf(0.0, float(p["nutrient_pct"]) - float(g["nutrient_meter_drop_per_day"]))
+	day += n
 	save_game()
 	var state := "READY TO HARVEST" if Farm.crop_ready(p) else "growing"
-	return {"ok": true, "text": "%s: day %d of %d (%s)." % [
-		Farm.crop(p["crop"])["name"], int(p["age_days"]), int(Farm.crop(p["crop"])["growth_days"]), state]}
+	return {"ok": true, "text": "%s: day %d of %d (%s). %s" % [
+		Farm.crop(p["crop"])["name"], int(p["age_days"]), int(Farm.crop(p["crop"])["growth_days"]), state, greenhouse_alert()]}
 
 func harvest_plot() -> Dictionary:
 	if not has_module("greenhouse") or not plot_ready():
@@ -212,10 +303,13 @@ func harvest_plot() -> Dictionary:
 	var kg := plot_kg()
 	food_store += kg
 	harvest_count += 1
-	var game: Dictionary = Farm.cfg()["game"]
-	plots[0] = Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"]))
+	var crop_id := String(plots[0]["crop"])
+	var area := float(plots[0]["area_m2"])
+	plots[0] = Farm.new_plot(crop_id, area)
+	plots[0]["water_pct"] = 100.0
+	plots[0]["nutrient_pct"] = 100.0
 	save_game()
-	return {"ok": true, "text": "Harvested %.1f kg of lettuce. ISS food store: %.1f kg." % [kg, food_store]}
+	return {"ok": true, "text": "Harvested %.1f kg of %s. ISS food store: %.1f kg." % [kg, Farm.crop(crop_id)["name"], food_store]}
 
 func study_samples() -> Dictionary:
 	var gain := int(C.get("study_data", 8))
@@ -698,16 +792,21 @@ func save_game() -> void:
 		"history": history, "design": design, "fuel": fuel_pct, "seed": seed_value,
 		"eva": eva_seconds, "tutorial": tutorial_seen, "sound": sound_on,
 		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore,
-		"harvest": harvest_count}
+		"harvest": harvest_count, "water": water_store, "nutrient_packs": nutrient_packs}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
 		f.close()
 
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	# The game was renamed from "OG-Frontier Prototype" to "OG-FRONTIER", which moves the
+	# user:// folder. Read the old save once so teammates keep their progress.
+	var path := SAVE_PATH
+	if not FileAccess.file_exists(path):
+		path = _legacy_save_path()
+		if path == "":
+			return
+	var f := FileAccess.open(path, FileAccess.READ)
 	var d = JSON.parse_string(f.get_as_text())
 	f.close()
 	if typeof(d) != TYPE_DICTIONARY:
@@ -731,6 +830,15 @@ func load_game() -> void:
 	var pl = d.get("plots", [])
 	if typeof(pl) == TYPE_ARRAY:
 		plots = pl
+		# v5 plots have no meters: they start full, like a freshly planted bed.
+		for old_plot in plots:
+			if typeof(old_plot) == TYPE_DICTIONARY:
+				if not old_plot.has("water_pct"):
+					old_plot["water_pct"] = 100.0
+				if not old_plot.has("nutrient_pct"):
+					old_plot["nutrient_pct"] = 100.0
+	water_store = maxf(0.0, float(d.get("water", float(farm_game()["water_kg_start"]))))
+	nutrient_packs = maxi(0, int(d.get("nutrient_packs", int(farm_game()["nutrient_packs_start"]))))
 	var o = d.get("ore", {})
 	if typeof(o) == TYPE_DICTIONARY:
 		for k in ore:
@@ -740,6 +848,10 @@ func load_game() -> void:
 		design[k] = int(d["design"][k])
 	for id in d.get("built", []):
 		built[id] = true
+
+func _legacy_save_path() -> String:
+	var old := OS.get_user_data_dir().get_base_dir().path_join("OG-Frontier Prototype").path_join("ogfrontier_save.json")
+	return old if FileAccess.file_exists(old) else ""
 
 func wipe_save() -> void:
 	if FileAccess.file_exists(SAVE_PATH):

@@ -85,6 +85,97 @@ static func btn(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Cal
 	parent.add_child(b)
 	return b
 
+# Primary CTA: solid cyan, the one button the player should press to move on.
+static func btn_primary(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Callable) -> Button:
+	var b := btn(parent, text, pos, size, cb)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("0aa6e0")
+	sb.set_border_width_all(2)
+	sb.border_color = Color("9fe9ff")
+	sb.set_corner_radius_all(6)
+	sb.shadow_color = Color(0.1, 0.7, 1.0, 0.55)
+	sb.shadow_size = 10
+	sb.shadow_offset = Vector2(0, 2)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	b.add_theme_stylebox_override("normal", sb)
+	var h: StyleBoxFlat = sb.duplicate()
+	h.bg_color = Color("22b9f5")
+	b.add_theme_stylebox_override("hover", h)
+	var p: StyleBoxFlat = sb.duplicate()
+	p.bg_color = Color("0779a8")
+	p.shadow_size = 2
+	b.add_theme_stylebox_override("pressed", p)
+	b.add_theme_color_override("font_color", Color("04121c"))
+	b.add_theme_color_override("font_hover_color", Color("04121c"))
+	b.add_theme_color_override("font_pressed_color", Color("04121c"))
+	b.add_theme_font_size_override("font_size", 17)
+	return b
+
+# Secondary: transparent outline, for back / less important actions.
+static func btn_ghost(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Callable) -> Button:
+	var b := btn(parent, text, pos, size, cb)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.09, 0.2, 0.35)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0.4, 0.55, 0.8, 0.65)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	b.add_theme_stylebox_override("normal", sb)
+	var h: StyleBoxFlat = sb.duplicate()
+	h.border_color = Color(0.6, 0.8, 1.0, 0.9)
+	h.bg_color = Color(0.1, 0.15, 0.3, 0.55)
+	b.add_theme_stylebox_override("hover", h)
+	var p: StyleBoxFlat = sb.duplicate()
+	p.bg_color = Color(0.04, 0.06, 0.14, 0.7)
+	b.add_theme_stylebox_override("pressed", p)
+	b.add_theme_color_override("font_color", Color("8fa3c9"))
+	b.add_theme_color_override("font_hover_color", Color("e8f1ff"))
+	return b
+
+# A disabled button that says WHY it is disabled: "[Need 2.0 kg Food]".
+static func btn_blocked(parent: Node, text: String, reason: String, pos: Vector2, size: Vector2, cb: Callable) -> Button:
+	var b := btn(parent, "%s  [%s]" % [text, reason], pos, size, cb)
+	b.disabled = true
+	b.modulate = Color(1, 1, 1, 0.75)
+	return b
+
+# Progress bar (Data, Smelter, crop day, water, nutrients...). value 0..1.
+static func bar(parent: Node, pos: Vector2, size: Vector2, value: float, col: Color,
+		label: String = "", label_col: Color = Color("04121c")) -> void:
+	var bg := ColorRect.new()
+	bg.color = Color(0.03, 0.05, 0.12)
+	bg.position = pos
+	bg.size = size
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(bg)
+	var fill := ColorRect.new()
+	fill.color = col
+	fill.position = pos
+	fill.size = Vector2(size.x * clampf(value, 0.0, 1.0), size.y)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(fill)
+	var outline := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0.35, 0.45, 0.7)
+	sb.set_corner_radius_all(3)
+	outline.add_theme_stylebox_override("panel", sb)
+	outline.position = pos - Vector2(1, 1)
+	outline.size = size + Vector2(2, 2)
+	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(outline)
+	if label != "":
+		var l := lbl(parent, label, pos, size, 12, label_col)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
 static func sfx(key: String) -> void:
 	var loop := Engine.get_main_loop() as SceneTree
 	if loop == null:

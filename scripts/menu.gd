@@ -5,8 +5,8 @@ var settings_box: Control
 
 func build() -> void:
 	star_seed = 11
-	Pix.lbl(self, "LAST LAUNCH", Vector2(80, 90), Vector2(700, 80), 64, Pix.EDGE)
-	Pix.lbl(self, "OG-Frontier  |  Space Mission Design Game (prototype)", Vector2(84, 175), Vector2(700, 30), 18, Pix.DIM)
+	Pix.lbl(self, "OG-FRONTIER", Vector2(80, 90), Vector2(700, 80), 64, Pix.EDGE)
+	Pix.lbl(self, "Last Launch  |  Space Mission Design Game (prototype)", Vector2(84, 175), Vector2(700, 30), 18, Pix.DIM)
 	Pix.lbl(self, "2031. Heat domes and failed harvests have made Earth nearly uninhabitable. The ISS is humanity's last home. Design a ship, pick a mission, survive the trip, and bring back the ore that finishes the Helios smelter.",
 		Vector2(84, 225), Vector2(560, 100), 18, Pix.TEXT)
 	# The menu is kept empty on purpose: the guide (story, how to play) lives inside the ISS.

@@ -14,7 +14,7 @@ const SLIDES := [
 		"note": "The station is the last safe place. Everything you do starts there."
 	},
 	{
-		"kicker": "ISS LAST LAUNCH - OPERATIONS LOBBY",
+		"kicker": "OG-FRONTIER - OPERATIONS LOBBY",
 		"title": "A HOME IN LOW EARTH ORBIT",
 		"body": "The ISS is your lobby, your factory and your farm. Grow food in the greenhouse, study samples in the lab, prepare radiation gear and design a ship for each destination.\n\nEvery world holds a different piece of the smelter. The Moon has ice and ilmenite. Mars has CO2, iron and a much longer trip.",
 		"note": "Data grows the station. Ore grows the smelter."
@@ -42,7 +42,7 @@ func render() -> void:
 	Pix.clear(ui)
 	var s: Dictionary = SLIDES[slide]
 	Pix.panel(ui, Vector2(56, 56), Vector2(700, 520))
-	Pix.lbl(ui, "LAST LAUNCH // MISSION BRIEFING   %d/%d" % [slide + 1, SLIDES.size()],
+	Pix.lbl(ui, "OG-FRONTIER // MISSION BRIEFING   %d/%d" % [slide + 1, SLIDES.size()],
 		Vector2(84, 76), Vector2(620, 24), 15, Pix.WARN)
 	Pix.lbl(ui, String(s["kicker"]), Vector2(84, 108), Vector2(620, 22), 14, Pix.DIM)
 	Pix.lbl(ui, String(s["title"]), Vector2(84, 138), Vector2(640, 54), 40, Pix.EDGE)

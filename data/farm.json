@@ -19,7 +19,16 @@
   "game": {
     "starter_crop": "lettuce",
     "plot_area_m2": 1.0,
-    "water_factor_default": 1.0
+    "water_factor_default": 1.0,
+    "water_meter_drop_per_day": 15,
+    "nutrient_meter_drop_per_day": 5,
+    "alert_low_pct": 20,
+    "water_kg_start": 20,
+    "water_kg_per_purchase": 5,
+    "water_data_cost_per_purchase": 4,
+    "water_kg_per_refill": 1,
+    "nutrient_packs_start": 2,
+    "nutrient_data_cost_per_pack": 3
   },
   "tags": {
     "solar_wm2_earth": "real",

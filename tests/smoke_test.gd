@@ -39,6 +39,7 @@ func _run() -> void:
 	_test_new_systems()
 	_test_t17()
 	_test_t18()
+	_test_farm_v2()
 	_test_golden()
 
 	if fails.is_empty():
@@ -303,6 +304,37 @@ func _test_t17() -> void:
 		gs.run["morale"] = 2
 		var allowed: String = gs.apply_choice(ice["choices"].size() - 1)
 		_check(not String(allowed).to_lower().contains("morale"), "morale choice allowed at 2")
+	gs.reset_all()
+
+# ---------- greenhouse v2: crop choice, water and nutrient meters, alerts ----------
+func _test_farm_v2() -> void:
+	gs.reset_all()
+	gs.station_data = 100
+	_check(gs.build_module("greenhouse"), "farm v2: greenhouse builds")
+	var sc: Dictionary = gs.set_crop("tomato")
+	_check(bool(sc.get("ok", false)), "an empty plot accepts a new crop")
+	_check(String(gs.plots[0]["crop"]) == "tomato", "the chosen crop is stored on the plot")
+	gs.tend_plot(3.0)
+	_check(absf(float(gs.plots[0]["water_pct"]) - 55.0) <= 0.01, "water meter drops 15 per day (got %.1f)" % float(gs.plots[0]["water_pct"]))
+	_check(absf(float(gs.plots[0]["nutrient_pct"]) - 85.0) <= 0.01, "nutrient meter drops 5 per day (got %.1f)" % float(gs.plots[0]["nutrient_pct"]))
+	_check(gs.greenhouse_alert().begins_with("All good"), "alert says all good while water is high")
+	_check(not bool(gs.set_crop("lettuce").get("ok", true)), "crop cannot change once planted")
+	gs.tend_plot(3.0)
+	_check(gs.greenhouse_alert().begins_with("WATER LOW"), "alert asks for water when the meter is low")
+	var store_before: float = gs.water_store
+	var wr: Dictionary = gs.water_plot()
+	_check(bool(wr.get("ok", false)), "watering succeeds with water in the store")
+	_check(absf(gs.water_store - (store_before - 1.0)) <= 0.001, "watering uses 1 kg from the store")
+	_check(absf(float(gs.plots[0]["water_pct"]) - 100.0) <= 0.01, "watering refills the meter")
+	var packs_before: int = gs.nutrient_packs
+	_check(bool(gs.feed_plot().get("ok", false)), "feeding uses a nutrient pack")
+	_check(gs.nutrient_packs == packs_before - 1, "feeding spends exactly one pack")
+	var data_before: int = gs.station_data
+	_check(bool(gs.buy_water().get("ok", false)), "water can be bought in the Habitat with Data")
+	_check(gs.station_data == data_before - int(gs.farm_game()["water_data_cost_per_purchase"]), "buying water costs the configured Data")
+	gs.station_data = 0
+	_check(not bool(gs.buy_water().get("ok", true)), "buying water with no Data is refused")
+	_check(not bool(gs.buy_nutrients().get("ok", true)), "buying nutrients with no Data is refused")
 	gs.reset_all()
 
 # ---------- T18 multi-walk EVA ----------

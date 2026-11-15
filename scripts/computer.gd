@@ -19,7 +19,7 @@ func refresh() -> void:
 	# terminal frame
 	Pix.panel(ui, Vector2(28, 24), Vector2(1224, 648))
 	Pix.lbl(ui, "ISS TERMINAL  v0.1", Vector2(48, 38), Vector2(500, 32), 24, Pix.GOOD)
-	Pix.lbl(ui, "LAST LAUNCH / HELIOS PROJECT", Vector2(48, 70), Vector2(500, 20), 13, Pix.DIM)
+	Pix.lbl(ui, "OG-FRONTIER / HELIOS PROJECT", Vector2(48, 70), Vector2(500, 20), 13, Pix.DIM)
 	Pix.lbl(ui, "DAY %03d   |   %s   |   LOW EARTH ORBIT" % [GameState.day, GameState.date_text()],
 		Vector2(620, 40), Vector2(600, 26), 17, Pix.WARN)
 	Pix.lbl(ui, "CREW %d   |   DATA %d   |   FOOD %.1f kg   |   SMELTER %.0f%%" % [

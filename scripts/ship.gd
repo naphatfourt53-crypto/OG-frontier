@@ -36,14 +36,14 @@ func refresh() -> void:
 	_side_panel()
 	queue_redraw()
 
-func _panel_title(pos: Vector2, title: String, sub: String) -> void:
-	Pix.panel(ui, pos, Vector2(280, 180))
+func _panel_title(pos: Vector2, title: String, sub: String, height: float = 180.0) -> void:
+	Pix.panel(ui, pos, Vector2(280, height))
 	Pix.lbl(ui, title, pos + Vector2(14, 10), Vector2(252, 22), 17, Pix.WARN)
 	Pix.lbl(ui, sub, pos + Vector2(14, 32), Vector2(252, 34), 12, Pix.DIM)
 
 func _greenhouse_panel() -> void:
 	var p := Vector2(40, 92)
-	_panel_title(p, "GREENHOUSE", "Lettuce, 28-day cycle. NASA BVAD crop data.")
+	_panel_title(p, "GREENHOUSE", "Crop, water and nutrients. NASA BVAD crop data.", 256.0)
 	if not GameState.has_module("greenhouse"):
 		Pix.lbl(ui, "Not installed.\nBuild the Greenhouse at the ISS first.", p + Vector2(14, 70), Vector2(252, 50), 14, Pix.BAD)
 		Pix.btn(ui, "BACK TO ISS", p + Vector2(14, 130), Vector2(252, 36), func(): go("station"))
@@ -53,11 +53,19 @@ func _greenhouse_panel() -> void:
 	var crop := Farm.crop(String(plot["crop"]))
 	var ready := Farm.crop_ready(plot)
 	Pix.lbl(ui, "%s  day %d / %d%s" % [crop["name"], int(plot["age_days"]), int(crop["growth_days"]),
-		"  READY" if ready else ""], p + Vector2(14, 68), Vector2(252, 22), 14, Pix.GOOD if ready else Pix.TEXT)
-	Pix.lbl(ui, "Expected harvest: %.2f kg" % GameState.plot_kg(), p + Vector2(14, 90), Vector2(252, 20), 13, Pix.DIM)
-	Pix.btn(ui, "TEND +1 DAY", p + Vector2(14, 116), Vector2(120, 34), _tend)
-	var h := Pix.btn(ui, "HARVEST", p + Vector2(146, 116), Vector2(120, 34), _harvest)
-	h.disabled = not ready
+		"  READY" if ready else ""], p + Vector2(14, 66), Vector2(252, 20), 14, Pix.GOOD if ready else Pix.TEXT)
+	Pix.bar(ui, p + Vector2(14, 88), Vector2(252, 10), float(plot["water_pct"]) / 100.0, Color("3fa7ff"))
+	Pix.lbl(ui, "Water %d%%" % int(plot["water_pct"]), p + Vector2(14, 98), Vector2(252, 14), 11, Pix.DIM)
+	Pix.bar(ui, p + Vector2(14, 116), Vector2(252, 10), float(plot["nutrient_pct"]) / 100.0, Color("ffc857"))
+	Pix.lbl(ui, "Nutrients %d%%   |   Packs %d" % [int(plot["nutrient_pct"]), GameState.nutrient_packs],
+		p + Vector2(14, 126), Vector2(252, 14), 11, Pix.DIM)
+	Pix.lbl(ui, GameState.greenhouse_alert(), p + Vector2(14, 142), Vector2(252, 30), 11, Pix.WARN)
+	if ready:
+		Pix.btn_primary(ui, "HARVEST", p + Vector2(14, 176), Vector2(252, 34), _harvest)
+	else:
+		Pix.btn_ghost(ui, "WATER (1 kg)", p + Vector2(14, 176), Vector2(122, 34), _water)
+		Pix.btn_ghost(ui, "FEED (1 pack)", p + Vector2(144, 176), Vector2(122, 34), _feed)
+	Pix.btn_ghost(ui, "TEND +1 DAY", p + Vector2(14, 216), Vector2(252, 30), _tend)
 
 func _science_panel() -> void:
 	var p := Vector2(340, 92)
@@ -79,26 +87,25 @@ func _locker_panel() -> void:
 	Pix.lbl(ui, "Scout data = +25% EVA time.", p + Vector2(14, 152), Vector2(252, 18), 12, Pix.DIM)
 
 func _galley_panel() -> void:
-	var p := Vector2(40, 300)
+	var p := Vector2(40, 372)
 	_panel_title(p, "GALLEY", "Hot meal from the ISS food store.")
-	Pix.lbl(ui, "Food store: %.1f kg\nA meal costs 2 kg and lifts crew mood before the flight." % GameState.food_store,
-		p + Vector2(14, 70), Vector2(252, 50), 14, Pix.TEXT)
-	var b := Pix.btn(ui, "COOK +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _cook)
-	b.disabled = GameState.food_store < 2.0
+	Pix.lbl(ui, "Cost: 2 kg food  |  Gain: crew mood", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
+	if GameState.food_store < 2.0:
+		Pix.btn_blocked(ui, "COOK +1 DAY", "Need 2.0 kg Food", p + Vector2(14, 132), Vector2(252, 36), _cook)
+	else:
+		Pix.btn_primary(ui, "COOK +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _cook)
 
 func _bunk_panel() -> void:
-	var p := Vector2(340, 300)
+	var p := Vector2(340, 372)
 	_panel_title(p, "BUNK", "Sleep one full day. The clock never stops.")
-	Pix.lbl(ui, "Rest advances the ISS clock. Use it when you want the greenhouse to grow without flying.",
-		p + Vector2(14, 70), Vector2(252, 58), 14, Pix.TEXT)
-	Pix.btn(ui, "REST +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _rest)
+	Pix.lbl(ui, "Cost: 1 Day  |  Gain: greenhouse grows", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
+	Pix.btn_ghost(ui, "REST +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _rest)
 
 func _terminal_panel() -> void:
-	var p := Vector2(640, 300)
-	_panel_title(p, "SHIP TERMINAL", "The v0.1 computer: day, location, ore and mission files.")
-	Pix.lbl(ui, "Open the terminal to read the full mission dossier and the smelter status.",
-		p + Vector2(14, 70), Vector2(252, 50), 14, Pix.TEXT)
-	Pix.btn(ui, "OPEN TERMINAL >", p + Vector2(14, 132), Vector2(252, 36), func(): go("computer"))
+	var p := Vector2(640, 372)
+	_panel_title(p, "SHIP TERMINAL", "Mission files, dossiers and the smelter status.")
+	Pix.lbl(ui, "Cost: free  |  Gain: read the mission files", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
+	Pix.btn_ghost(ui, "OPEN TERMINAL >", p + Vector2(14, 132), Vector2(252, 36), func(): go("computer"))
 
 func _side_panel() -> void:
 	Pix.panel(ui, Vector2(960, 92), Vector2(286, 470))
@@ -111,9 +118,9 @@ func _side_panel() -> void:
 		Vector2(978, 138), Vector2(250, 90), 14, Pix.TEXT)
 	Pix.lbl(ui, "NEXT OBJECTIVE", Vector2(978, 246), Vector2(250, 22), 16, Pix.WARN)
 	Pix.lbl(ui, _objective_text(), Vector2(978, 272), Vector2(250, 100), 14, Pix.TEXT)
-	Pix.btn(ui, "MISSION CONTROL >", Vector2(978, 390), Vector2(250, 40), func(): go("mission"))
-	Pix.btn(ui, "< BACK TO ISS", Vector2(978, 440), Vector2(250, 40), func(): go("station"))
-	Pix.btn(ui, "HANGAR", Vector2(978, 490), Vector2(250, 40), func(): go("hangar"))
+	Pix.btn_primary(ui, "MISSION CONTROL >", Vector2(978, 390), Vector2(250, 40), func(): go("mission"))
+	Pix.btn_ghost(ui, "< BACK TO ISS", Vector2(978, 440), Vector2(250, 40), func(): go("station"))
+	Pix.btn_ghost(ui, "HANGAR", Vector2(978, 490), Vector2(250, 40), func(): go("hangar"))
 
 func _objective_text() -> String:
 	if GameState.smelter_pct() >= 1.0:
@@ -129,6 +136,16 @@ func _tend() -> void:
 
 func _harvest() -> void:
 	var r := GameState.harvest_plot()
+	info.text = String(r["text"])
+	refresh()
+
+func _water() -> void:
+	var r := GameState.water_plot()
+	info.text = String(r["text"])
+	refresh()
+
+func _feed() -> void:
+	var r := GameState.feed_plot()
 	info.text = String(r["text"])
 	refresh()
 
