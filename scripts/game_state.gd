@@ -372,8 +372,12 @@ func start_run(mission_id: String) -> void:
 		"over": false, "reason": "", "detail": "", "landed": false, "success": false,
 		"legs": [], "log": [], "decisions": [], "current_event": {}, "score": 0, "data_gain": 0,
 		"min_net": 999.0, "rad_mult": rad_mult, "scout": has_scout, "food_store_used": food_used,
-		"stamina_btu": 0.0, "eva_food_kcal": 0.0
+		"stamina_btu": 0.0, "eva_food_kcal": 0.0, "eva_time": 0.0
 	}
+	# Fresh food from the ISS greenhouse rides in the galley, so it still has to be
+	# eaten. analyze() already removed it from the packed locker; load it into the stock
+	# here, otherwise the offset is lost and a short delay starves the crew.
+	run["stock"]["food"] += food_used
 	# Gear is loaded for this flight only; the player buys it again at the ship.
 	prep["rad_kit"] = false
 	prep["scout"] = false
@@ -480,11 +484,12 @@ func advance() -> Dictionary:
 		return {"kind": "end", "text": text}
 	return {"kind": "info", "text": text, "step": s}
 
-func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0) -> void:
+func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0, eva_time: float = 0.0) -> void:
 	run["explore_pts"] = points
 	run["explore_counts"] = counts.duplicate()
 	run["stamina_btu"] = stamina_btu
 	run["eva_food_kcal"] = eva_food_kcal
+	run["eva_time"] = eva_time
 	run["data_raw"] += points
 	for k in counts:
 		if ore.has(k):

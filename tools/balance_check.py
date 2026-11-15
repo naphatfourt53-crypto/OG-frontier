@@ -4,7 +4,7 @@ Run:  python3 tools/balance_check.py
 It answers: does the sample design win? do weak designs fail for the intended reason?
 How many of the 2187 designs can win at all? Is the game too easy/hard?"""
 import json, math, itertools, os, sys
-D = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "game_data.json")))
+D = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "game_data.json"), encoding="utf-8"))
 C = D["constants"]; PARTS = D["parts"]; M = [m for m in D["missions"] if m["id"] == "moon"][0]
 ORDER = ["cockpit", "engine", "tank", "life", "power", "storage", "comms"]
 
@@ -34,19 +34,21 @@ def analyze(design, fuel, food_store=0.0):
     dv = ve*math.log((dry+prop)/dry)/1000
     dv_need = sum(l["dv"] for l in M["legs"])*(1+C["leg_margin"])
     return dict(dry=dry, prop=prop, cost=cost, gs=gs, go=go, use=use, pack=pack, need=need, isp=isp,
+                food_used=food_used,
                 shield=PARTS[0]["options"][design["cockpit"]]["shield"],
                 total=dry+prop, ok_launch=(dry+prop <= C["mass_cap_kg"] and cost <= C["budget"]),
                 dv=dv, dv_need=dv_need, net=gs+go-use, comm_q=PARTS[6]["options"][design["comms"]]["quality"],
                 budget=C["budget"], mass_cap=C["mass_cap_kg"], total_need=sum(need.values()),
                 cap=PARTS[5]["options"][design["storage"]]["cap_kg"])
 
-def simulate(design, fuel, evs, choices, explore=80):
+def simulate(design, fuel, evs, choices, explore=80, food_store=0.0):
     """evs: 3 event dicts; choices: 3 ints. Returns (success, reason).
     explore = science points from the EVA. Shown on the report and added to Data,
-    but it never changes survival, so the default is just the expected value of a good walk."""
-    a = analyze(design, fuel); crew = C["crew"]; r = C["crew_day_kg"]
+    but it never changes survival, so the default is just the expected value of a good walk.
+    food_store is ISS greenhouse food: it replaces packed food and rides in the galley."""
+    a = analyze(design, fuel, food_store); crew = C["crew"]; r = C["crew_day_kg"]
     life = PARTS[3]["options"][design["life"]]
-    st = dict(a["pack"]); prop = a["prop"]; hull = 100.0; pm = 1.0
+    st = dict(a["pack"]); st["food"] += a["food_used"]; prop = a["prop"]; hull = 100.0; pm = 1.0
     state = {"pm": 1.0}
     def consume(days):
         nonlocal st

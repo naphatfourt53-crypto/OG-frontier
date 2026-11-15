@@ -28,6 +28,8 @@ func rebuild() -> void:
 	build_fuel()
 	Pix.btn(ui, "Load sample design", Vector2(20, 660), Vector2(190, 40), on_sample)
 	Pix.btn(ui, "< Station", Vector2(220, 660), Vector2(130, 40), func(): go("station"))
+	Pix.btn(ui, "Crew cabin", Vector2(360, 660), Vector2(140, 40), func(): go("ship"))
+	Pix.btn(ui, "Terminal", Vector2(510, 660), Vector2(120, 40), func(): go("computer"))
 	Pix.btn(ui, "Mission Control >", Vector2(1000, 660), Vector2(260, 44), func(): go("mission"))
 	refresh_stats()
 
@@ -89,7 +91,13 @@ func refresh_stats() -> void:
 	Pix.lbl(stats, "SHIP STATS", Vector2(1010, 66), Vector2(250, 24), 18, Pix.EDGE)
 	var good := Pix.GOOD
 	var bad := Pix.BAD
-	var y := 96.0
+	# Station-side support: these change what the ship has to carry and how the EVA goes.
+	line(92.0, "ISS food store: %.1f kg" % GameState.food_store, good if GameState.food_store > 0.0 else Pix.DIM)
+	line(112.0, "Scout: %s   Rad kit: %s" % [
+		"READY" if GameState.prep.get("scout", false) else "-",
+		"READY" if GameState.prep.get("rad_kit", false) else "-"],
+		good if (GameState.prep.get("scout", false) or GameState.prep.get("rad_kit", false)) else Pix.DIM)
+	var y := 148.0
 	line(y, "Mass: %.1f t (limit %.0f t)" % [a["total_kg"] / 1000.0, a["mass_cap_kg"] / 1000.0], good if a["total_kg"] <= a["mass_cap_kg"] else bad)
 	y += 26
 	line(y, "Budget: %.0f / %.0f" % [a["cost"], a["budget"]], good if a["cost"] <= a["budget"] else bad)

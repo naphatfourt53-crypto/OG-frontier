@@ -7,23 +7,35 @@ func build() -> void:
 	star_seed = 11
 	Pix.lbl(self, "LAST LAUNCH", Vector2(80, 90), Vector2(700, 80), 64, Pix.EDGE)
 	Pix.lbl(self, "OG-Frontier  |  Space Mission Design Game (prototype)", Vector2(84, 175), Vector2(700, 30), 18, Pix.DIM)
-	Pix.lbl(self, "Earth is nearly uninhabitable. Your station is humanity's last home. Design a ship, pick a mission, survive the trip, and bring back the data that lets the station grow.",
+	Pix.lbl(self, "2031. Heat domes and failed harvests have made Earth nearly uninhabitable. The ISS is humanity's last home. Design a ship, pick a mission, survive the trip, and bring back the ore that finishes the Helios smelter.",
 		Vector2(84, 225), Vector2(560, 100), 18, Pix.TEXT)
-	Pix.btn(self, "START", Vector2(84, 352), Vector2(260, 52), func(): go("station"))
-	Pix.btn(self, "SETTINGS", Vector2(84, 414), Vector2(260, 44), open_settings)
-	Pix.btn(self, "RESET SAVE", Vector2(84, 468), Vector2(260, 44), func():
+	Pix.btn(self, "START", Vector2(84, 338), Vector2(260, 50), start_game)
+	Pix.btn(self, "HOW TO PLAY", Vector2(84, 394), Vector2(125, 40), func(): go("tutorial"))
+	Pix.btn(self, "STORY", Vector2(219, 394), Vector2(125, 40), func(): go("story"))
+	Pix.btn(self, "SETTINGS", Vector2(84, 440), Vector2(260, 40), open_settings)
+	Pix.btn(self, "RESET SAVE", Vector2(84, 486), Vector2(260, 40), func():
 		GameState.wipe_save()
 		go("menu"))
-	Pix.btn(self, "QUIT", Vector2(84, 522), Vector2(260, 44), func(): get_tree().quit())
-	var hist := "Best score: %d\nData in station: %d\n\nRecent runs:\n" % [GameState.best_score, GameState.station_data]
+	Pix.btn(self, "QUIT", Vector2(84, 532), Vector2(260, 40), func(): get_tree().quit())
+	var hist := "Best %d   |   Data %d   |   Runs %d\n" % [GameState.best_score, GameState.station_data, GameState.history.size()]
 	if GameState.history.is_empty():
-		hist += "  (none yet)"
-	for h in GameState.history:
-		var tag := "OK  " if h["success"] else "FAIL"
-		hist += "  %s  score %d  seed %d  %s\n" % [tag, int(h["score"]), int(h["seed"]), String(h["reason"])]
-	Pix.lbl(self, hist, Vector2(84, 586), Vector2(560, 130), 13, Pix.DIM)
+		hist += "No runs yet."
+	else:
+		var first: int = maxi(0, GameState.history.size() - 4)
+		for i in range(first, GameState.history.size()):
+			var h: Dictionary = GameState.history[i]
+			var tag := "OK  " if h["success"] else "FAIL"
+			hist += "%s  score %d  seed %d  %s\n" % [tag, int(h["score"]), int(h["seed"]), String(h["reason"])]
+	Pix.lbl(self, hist, Vector2(84, 578), Vector2(560, 130), 12, Pix.DIM)
 	Pix.lbl(self, "Mouse for menus  |  WASD / arrows on the Moon  |  Enter = continue  |  Esc = back", Vector2(620, 692), Vector2(640, 20), 13, Pix.DIM)
 	Pix.lbl(self, "Earthrise, Apollo 8 - NASA (public domain)  |  see assets/CREDITS.md", Vector2(620, 670), Vector2(640, 18), 11, Color(0.55, 0.62, 0.78))
+
+func start_game() -> void:
+	# First launch gets the three-slide briefing; afterwards START goes straight to the ISS.
+	if GameState.story_seen:
+		go("station")
+	else:
+		go("story")
 
 # ---------- settings ----------
 
@@ -59,10 +71,8 @@ func open_settings() -> void:
 		Vector2(350, 296), Vector2(580, 60), 14, Pix.DIM)
 
 	Pix.btn(settings_box, "Replay tutorial", Vector2(350, 380), Vector2(240, 44), func():
-		GameState.tutorial_seen = false
-		GameState.save_game()
 		close_settings()
-		go("station"))
+		go("tutorial"))
 	Pix.btn(settings_box, "CLOSE", Vector2(610, 380), Vector2(240, 44), close_settings)
 	var sound_btn := Pix.btn(settings_box, _sound_label(), Vector2(350, 434), Vector2(240, 40), func(): pass)
 	sound_btn.tooltip_text = "Toggle all sound effects (the setting is saved)"

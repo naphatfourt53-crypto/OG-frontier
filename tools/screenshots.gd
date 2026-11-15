@@ -26,11 +26,24 @@ func _run() -> void:
 	gs.load_sample_design()
 	gs.seed_value = 424242
 	gs.tutorial_seen = true  # keep screen 02 clean; the overlay gets its own shot
+	# Show the new station support in the gallery: some ISS food and gear already loaded.
+	gs.station_data = 80
+	gs.food_store = 8.0
+	gs.buy_prep("scout")
+	gs.buy_prep("rad_kit")
 
 	await _shot("01_menu", "menu")
+	await _shot("12_story", "story")
+	await _shot("13_full_tutorial", "tutorial")
 	await _shot("02_station", "station")
 	await _shot("03_hangar", "hangar")
-	await _shot("04_mission", "mission")
+
+	var mission = await _open("mission")
+	await _capture("04_mission")
+	mission.open_dossier()
+	await _frames(2)
+	await _capture("14_dossier")
+	await _close(mission)
 
 	# Flight: run the sim up to the first event, then show the dialog and its result.
 	gs.start_run("moon")
@@ -45,10 +58,10 @@ func _run() -> void:
 	await _capture("05_flight")
 	if res.get("kind", "") == "event":
 		flight.show_event(res["event"])
-		await _frames(2)
+		await create_timer(0.75).timeout
 		await _capture("06_event")
-		flight.choose(0)
-		await _frames(2)
+		flight.choose(_best_choice(res["event"]))
+		await create_timer(0.75).timeout
 		await _capture("07_event_result")
 	await _close(flight)
 
@@ -62,13 +75,13 @@ func _run() -> void:
 		if r.get("kind", "") == "end":
 			break
 	await _shot("08_explore", "explore")
-	gs.finish_explore(70.0, {"ice": 2, "regolith": 5, "ilmenite": 1, "helium3": 0})
+	gs.finish_explore(70.0, {"ice": 2, "regolith": 5, "ilmenite": 1, "helium3": 0}, 5400.0, 1200.0, 75.0)
 	guard = 0
 	while guard < 40:
 		var r2: Dictionary = gs.advance()
 		guard += 1
 		if r2.get("kind", "") == "event":
-			gs.apply_choice(0)
+			gs.apply_choice(_best_choice(r2["event"]))
 		elif r2.get("kind", "") == "end":
 			break
 	await _shot("09_report", "report")
@@ -85,6 +98,31 @@ func _run() -> void:
 	await _frames(2)
 	await _capture("11_tutorial")
 	await _close(station)
+
+	# Station-side rooms with modules built, food growing and gear loaded.
+	gs.reset_all()
+	gs.station_data = 140
+	gs.build_module("greenhouse")
+	gs.build_module("lab")
+	gs.build_module("exercise")
+	gs.ensure_plot()
+	gs.tend_plot(8.0)
+	gs.food_store = 12.5
+	gs.buy_prep("scout")
+	gs.buy_prep("rad_kit")
+	gs.ore = {"ice": 3, "regolith": 9, "ilmenite": 2, "helium3": 0}
+	await _shot("15_ship", "ship")
+	await _shot("16_computer", "computer")
+	await _shot("17_station_built", "station")
+
+	# In-flight crew overlay.
+	gs.load_sample_design()
+	gs.start_run("moon")
+	var flight2 = await _open("flight")
+	flight2.open_crew()
+	await _frames(2)
+	await _capture("18_crew")
+	await _close(flight2)
 
 	if failures.is_empty():
 		print("SCREENSHOTS OK -> ", ProjectSettings.globalize_path(OUT_DIR))
@@ -124,3 +162,28 @@ func _shot(name: String, scene: String) -> void:
 	var node := await _open(scene)
 	await _capture(name)
 	await _close(node)
+
+# Same "sensible player" heuristic as tests/smoke_test.gd, so the gallery shows a successful run.
+func _best_choice(ev: Dictionary) -> int:
+	var best := 0
+	var best_cost := 1.0e9
+	var choices: Array = ev["choices"]
+	for i in choices.size():
+		var fx: Dictionary = choices[i]["fx"]
+		var cost := 0.0
+		if fx.has("days"):
+			cost += float(fx["days"]) * 12.0
+		if fx.has("supply_pct"):
+			cost += -float(fx["supply_pct"]) * 40.0
+		if fx.has("hull"):
+			cost += -float(fx["hull"])
+		if fx.has("rad_hull"):
+			cost += float(fx["rad_hull"])
+		if fx.has("prop_pct"):
+			cost += -float(fx["prop_pct"]) * 100.0
+		if fx.has("data_mult"):
+			cost += (1.0 - float(fx["data_mult"])) * 15.0
+		if cost < best_cost:
+			best_cost = cost
+			best = i
+	return best

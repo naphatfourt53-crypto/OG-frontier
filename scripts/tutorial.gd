@@ -49,7 +49,7 @@ func build() -> void:
 func render() -> void:
 	Pix.clear(ui)
 	var s: Dictionary = SLIDES[slide]
-	Pix.panel(ui, Vector2(56, 48), Vector2(780, 560))
+	Pix.panel(ui, Vector2(56, 48), Vector2(780, 520))
 	Pix.lbl(ui, "HOW TO PLAY  //  %d OF %d" % [slide + 1, SLIDES.size()],
 		Vector2(84, 68), Vector2(700, 24), 15, Pix.WARN)
 	Pix.lbl(ui, String(s["title"]), Vector2(84, 100), Vector2(720, 48), 34, Pix.EDGE)
@@ -72,8 +72,14 @@ func render() -> void:
 	# Right-hand illustration: the ship you are learning to build.
 	Pix.panel(ui, Vector2(880, 120), Vector2(320, 440))
 	Pix.lbl(ui, "YOUR SHIP", Vector2(904, 140), Vector2(272, 24), 18, Pix.WARN)
-	Pix.draw_ship(self, Vector2(1040, 190), GameState.design, 4.5, false)
+	var canvas := Control.new()
+	canvas.position = Vector2(880, 120)
+	canvas.size = Vector2(320, 400)
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(canvas)
+	canvas.draw.connect(func(): Pix.draw_ship(canvas, Vector2(160, 70), GameState.design, 4.5, false))
 	Pix.lbl(ui, "7 parts. One mission.", Vector2(904, 500), Vector2(272, 22), 14, Pix.DIM)
+	queue_redraw()
 
 func _move(d: int) -> void:
 	slide = clampi(slide + d, 0, SLIDES.size() - 1)

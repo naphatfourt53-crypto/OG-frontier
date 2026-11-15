@@ -2,6 +2,60 @@
 
 รูปแบบอ้างอิง [Keep a Changelog](https://keepachangelog.com/) และ semantic versioning
 
+## [0.4.0] - 2026-11-15
+
+เดโมตาม brief ใหม่: Earth กำลังร้อน, ISS เป็น lobby, ปลูกอาหาร, ออกแบบยานตามจุดหมาย
+และ EVA แบบมีขีดจำกัดเพื่อหา ore ให้เตา Helios
+
+### Added
+
+- **Story briefing 3 สไลด์** (`story.gd` / `story.tscn`) ก่อนเข้าสถานีครั้งแรก
+  พร้อมปุ่ม STORY ที่เมนูเพื่อเปิดดูซ้ำ
+- **Tutorial เต็ม 6 สไลด์** (`tutorial.gd` / `tutorial.tscn`) เปิดจากเมนู สถานี
+  และ Settings; ยังคง overlay สั้น 3 ขั้นเดิมไว้ที่สถานี
+- **Crew cabin** (`ship.gd` / `ship.tscn`): greenhouse, science desk, suit locker,
+  galley, bunk และ terminal — ปลูกผัก ศึกษา samples พักผ่อน และโหลด gear
+- **ISS Terminal v0.1** (`computer.gd` / `computer.tscn`): วัน/วันที่/ตำแหน่ง,
+  smelter ore, mission files และ dossier ของ Moon/Mars
+- **Mission dossier modal** ใน Mission Control: environment, hazards, resources,
+  recommended gear, scout note และ station support
+- **In-flight crew activities** ในหน้า Flight: hydroponics (+2 kg food),
+  study (+5 science), EVA prep (+8% hull) — ใช้เวลาหนึ่งวันและกินเสบียงจริง
+- **EVA stamina/pace**: `1` easy, `2` normal, `3` hard, `Shift` burst,
+  stamina bar, reserve warning และจบ EVA เมื่อพลังหมด
+- **Scout drone** เพิ่มเวลา EVA 25%; **radiation blanket** ลด flare damage 40%;
+  อาหารจาก ISS ลดอาหารที่ต้องบรรทุก
+- **Helios ore/smelter progress** บันทึกใน save และแสดงในสถานี/terminal/report
+- **ฟาร์มจริง**: `farm.gd` + `data/farm.json` (NASA BVAD crop data), 1 plot,
+  วงจร lettuce 28 วัน, harvest เข้า food store
+- **Stamina/physics data**: `stamina.gd`, `physics.gd` พร้อม JSON และตัวเลขจริง
+- **Smoke test 161 checks**: ฉากใหม่, farm, prep, food offset, stamina, crew activity,
+  dossier fields และ save version
+- **Screenshot 18 ภาพ**: story, tutorial เต็ม, crew cabin, terminal, dossier, crew overlay
+
+### Changed
+
+- `save_version` = **4** เพิ่ม `story`, `day`, `food`, `prep`, `plots`, `ore`
+  (เซฟ v1–v3 ยังโหลดได้ด้วยค่า default)
+- เมนูมี START → story ครั้งแรก, HOW TO PLAY, STORY, SETTINGS, RESET, QUIT
+- สถานีมีปุ่ม CREW CABIN, TERMINAL, HOW TO PLAY และจัดตำแหน่งโมดูลใหม่
+  (Exercise Bay ไม่ทับ header)
+- Hangar มีลิงก์ Crew cabin/Terminal และแสดง ISS food/scout/rad kit
+- Hangar/สถานี/Flight ไม่มี full-screen Control ที่บล็อกเมาส์แล้ว (mouse filter fix)
+- `balance_check.py` อ่าน JSON แบบ UTF-8 และรองรับ food store
+- README/AGENTS อัปเดตจำนวน test, ภาพหน้าจอ, save version และแผนที่โค้ด
+
+### Fixed
+
+- อาหารจาก ISS ถูกหักออกจาก food store ตอน launch แต่ไม่ถูกโหลดขึ้นยาน
+  ทำให้เที่ยวบินที่มี delay 2 วันอดอาหารทั้งที่ควรมีอาหารพอ ตอนนี้โหลดเข้าคลังบนยานแล้ว
+  และมี smoke check ยืนยันว่าอาหารที่ offset ไม่หายไป
+- ปุ่มใน Hangar/Station/Flight กดไม่ติดเพราะ overlay โปร่งใสกิน mouse input
+- ข้อความ typewriter ใน event ถูกถ่ายภาพตอนยังพิมพ์ไม่จบ (screenshot harness)
+- HUD ของ EVA ล้นบรรทัดทับ stamina bar
+- ข้อความประวัติการเล่นในเมนูถูกตัดขอบล่าง
+- ปุ่ม NEXT/SKIP ของ story/tutorial คาบเส้นขอบ panel
+
 ## [0.3.0] - 2026-11-14
 
 เสียง, build จริง และสถานะ T5/T7 ที่ปิดได้

@@ -38,7 +38,7 @@ func build() -> void:
 func render() -> void:
 	Pix.clear(ui)
 	var s: Dictionary = SLIDES[slide]
-	Pix.panel(ui, Vector2(56, 56), Vector2(700, 560))
+	Pix.panel(ui, Vector2(56, 56), Vector2(700, 520))
 	Pix.lbl(ui, "LAST LAUNCH // MISSION BRIEFING   %d/%d" % [slide + 1, SLIDES.size()],
 		Vector2(84, 76), Vector2(620, 24), 15, Pix.WARN)
 	Pix.lbl(ui, String(s["kicker"]), Vector2(84, 108), Vector2(620, 22), 14, Pix.DIM)

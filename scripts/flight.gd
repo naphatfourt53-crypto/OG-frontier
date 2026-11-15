@@ -4,7 +4,9 @@ extends Screen
 var ui: Control
 var log_label: Label
 var cont_btn: Button
+var crew_btn: Button
 var event_box: Control
+var crew_box: Control
 var hud: Control
 var ship_t: float = 0.0
 var ship_target: float = 0.0
@@ -12,6 +14,7 @@ var ended: bool = false
 var shake: float = 0.0
 var launch_anim: float = 1.2
 var event_open: bool = false
+var crew_msg: String = "Choose one activity. Each one spends a full day of supplies."
 
 func build() -> void:
 	star_seed = 51
@@ -29,9 +32,16 @@ func build() -> void:
 	# back to STOP while a decision is on screen.
 	event_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(event_box)
+	crew_box = Control.new()
+	crew_box.size = Vector2(1280, 720)
+	crew_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crew_box.visible = false
+	add_child(crew_box)
 	Pix.lbl(ui, "FLIGHT LOG", Vector2(20, 14), Vector2(500, 36), 28, Pix.EDGE)
 	Pix.lbl(ui, "Seed %d" % GameState.seed_value, Vector2(1100, 20), Vector2(160, 24), 14, Pix.DIM)
 	log_label = Pix.lbl(ui, "", Vector2(20, 330), Vector2(1240, 300), 15, Pix.TEXT)
+	crew_btn = Pix.btn(ui, "CREW", Vector2(690, 650), Vector2(170, 52), open_crew)
+	crew_btn.tooltip_text = "Spend one day on hydroponics, study or EVA preparation"
 	cont_btn = Pix.btn(ui, "CONTINUE >", Vector2(990, 650), Vector2(270, 52), on_continue)
 	set_progress()
 	ship_t = ship_target
@@ -118,9 +128,68 @@ func on_continue() -> void:
 			finish_flight()
 
 func finish_flight() -> void:
+	ended = true
+	crew_btn.disabled = true
 	cont_btn.text = "SEE REPORT >"
 	cont_btn.pressed.disconnect(on_continue)
 	cont_btn.pressed.connect(func(): go("report"))
+
+# ---------- in-flight crew activities ----------
+
+func open_crew() -> void:
+	if event_open or ended or bool(GameState.run.get("over", false)):
+		return
+	crew_box.visible = true
+	crew_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	render_crew()
+
+func render_crew() -> void:
+	Pix.clear(crew_box)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	crew_box.add_child(dim)
+	Pix.panel(crew_box, Vector2(250, 130), Vector2(780, 380))
+	Pix.lbl(crew_box, "CREW ACTIVITIES", Vector2(280, 148), Vector2(720, 34), 26, Pix.WARN)
+	Pix.lbl(crew_box, "One day costs oxygen, water and food. The voyage clock advances.", Vector2(280, 182), Vector2(720, 20), 13, Pix.DIM)
+	Pix.lbl(crew_box, crew_msg, Vector2(280, 206), Vector2(720, 42), 15, Pix.TEXT)
+	var acts: Dictionary = GameState.C.get("crew_activities", {})
+	var y := 254.0
+	for kind in ["grow", "study", "prep"]:
+		if not acts.has(kind):
+			continue
+		var act: Dictionary = acts[kind]
+		var effect := ""
+		if act.has("food_kg"):
+			effect = "+%.0f kg food" % float(act["food_kg"])
+		elif act.has("data"):
+			effect = "+%.0f science" % float(act["data"])
+		elif act.has("hull"):
+			effect = "+%.0f%% hull" % float(act["hull"])
+		var kk: String = kind
+		var b := Pix.btn(crew_box, "%s   (%s)" % [String(act["name"]).to_upper(), effect],
+			Vector2(280, y), Vector2(720, 54), func(): do_crew_activity(kk))
+		b.add_theme_font_size_override("font_size", 15)
+		y += 62.0
+	Pix.btn(crew_box, "CLOSE", Vector2(850, 442), Vector2(150, 46), close_crew)
+
+func do_crew_activity(kind: String) -> void:
+	var r := GameState.crew_activity(kind)
+	crew_msg = String(r["text"])
+	update_hud()
+	show_log()
+	if bool(GameState.run.get("over", false)):
+		close_crew()
+		finish_flight()
+		return
+	render_crew()
+
+func close_crew() -> void:
+	crew_box.visible = false
+	crew_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	Pix.clear(crew_box)
 
 func _dim_event_box() -> void:
 	# Darken the flight screen behind an event so HUD/log text cannot be mistaken for dialog text.

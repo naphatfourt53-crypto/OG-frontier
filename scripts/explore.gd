@@ -3,6 +3,7 @@ extends Screen
 # Ice and helium-3 sit inside dark craters (slow you down); ilmenite sits near rock outcrops.
 
 var t_left: float = 60.0
+var t_total: float = 60.0
 var pl: Vector2 = Vector2(640, 380)
 var points: float = 0.0
 var counts: Dictionary = {}
@@ -11,6 +12,8 @@ var outcrops: Array = []
 var items: Array = []
 var done: bool = false
 var res: Dictionary = {}
+var suit: Stamina
+var pace_wanted: String = "normal"
 var ui: Control
 var hud_label: Label
 var count_label: Label
@@ -23,7 +26,16 @@ const PICKUP := 26.0
 
 func build() -> void:
 	star_seed = 61
-	t_left = GameState.eva_seconds
+	var scout := false
+	if not GameState.run.is_empty():
+		scout = bool(GameState.run.get("scout", false))
+	else:
+		scout = bool(GameState.prep.get("scout", false))
+	var time_mult := float(GameState.C.get("prep", {}).get("scout_time_mult", 1.25)) if scout else 1.0
+	t_left = GameState.eva_seconds * time_mult
+	t_total = t_left
+	var life_name := String(GameState.opt("life").get("name", "Open-loop"))
+	suit = Stamina.create(life_name, GameState.has_module("exercise"))
 	res = GameState.data["moon_resources"]
 	for k in res:
 		counts[k] = 0
@@ -38,12 +50,13 @@ func build() -> void:
 	_spawn(rng)
 	ui = Control.new()
 	ui.size = Vector2(1280, 720)
+	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
 	Pix.lbl(ui, "MOON WALK - sample the south pole", Vector2(20, 10), Vector2(700, 32), 24, Pix.EDGE)
-	Pix.lbl(ui, "WASD / arrows to move. Craters are dark and slow you down. SPACE returns to the lander early.",
+	Pix.lbl(ui, "WASD / arrows to move. 1 easy / 2 normal / 3 hard / Shift burst. SPACE returns to the lander.",
 		Vector2(20, 42), Vector2(900, 22), 14, Pix.DIM)
 	count_label = Pix.lbl(ui, "", Vector2(20, 70), Vector2(760, 24), 16, Pix.WARN)
-	hud_label = Pix.lbl(ui, "", Vector2(980, 12), Vector2(280, 30), 22, Pix.WARN)
+	hud_label = Pix.lbl(ui, "", Vector2(900, 10), Vector2(360, 28), 20, Pix.WARN)
 	info = Pix.lbl(ui, "", Vector2(760, 66), Vector2(500, 30), 14, Pix.DIM)
 
 func _spawn(rng: RandomNumberGenerator) -> void:
@@ -97,7 +110,18 @@ func _process(delta: float) -> void:
 		dir.y -= 1
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		dir.y += 1
+	# Pace: 1 easy, 2 normal, 3 hard, Shift burst. Stationary time always drains at easy.
+	pace_wanted = "normal"
+	if Input.is_key_pressed(KEY_1):
+		pace_wanted = "easy"
+	elif Input.is_key_pressed(KEY_3):
+		pace_wanted = "hard"
+	if Input.is_key_pressed(KEY_SHIFT):
+		pace_wanted = "burst"
+	var moving := dir.length() > 0.01
+	var applied := suit.step(delta, pace_wanted, moving)
 	var speed := SLOW_SPEED if in_crater(pl) else SPEED
+	speed *= Stamina.speed_mult(applied)
 	pl += dir.normalized() * speed * delta
 	pl = _clamp_ground(pl)
 	for it in items.duplicate():
@@ -107,10 +131,18 @@ func _process(delta: float) -> void:
 			counts[it["type"]] += 1
 			Sfx.play("pickup")
 			info.text = "%s  +%d pts" % [String(res[it["type"]]["name"]), int(it["pts"])]
-	hud_label.text = "Time %02d   Points %d" % [int(maxf(0.0, t_left)), int(points)]
+	var reserve: bool = suit.in_reserve()
+	hud_label.text = "Time %02d   Stamina %d%%   %s%s" % [
+		int(maxf(0.0, t_left)), int(suit.fraction() * 100.0), String(applied).to_upper(),
+		"  RESERVE" if reserve else ""]
+	hud_label.add_theme_color_override("font_color", Pix.BAD if reserve else Pix.WARN)
 	count_label.text = _counts_text()
-	if t_left <= 0.0 or Input.is_key_pressed(KEY_SPACE):
-		finish()
+	if suit.is_empty():
+		finish("The suit ran out of energy. The crew had to stop.")
+	elif t_left <= 0.0:
+		finish("The EVA clock ran out.")
+	elif Input.is_key_pressed(KEY_SPACE):
+		finish("The crew returned to the lander early.")
 	queue_redraw()
 
 func _counts_text() -> String:
@@ -119,19 +151,26 @@ func _counts_text() -> String:
 		parts.append("%s %d" % [String(res[k]["name"]), int(counts.get(k, 0))])
 	return "  |  ".join(PackedStringArray(parts))
 
-func finish() -> void:
+func finish(reason: String = "The EVA clock ran out.") -> void:
+	if done:
+		return
 	done = true
-	Pix.panel(ui, Vector2(340, 200), Vector2(600, 300))
-	Pix.lbl(ui, "EVA OVER", Vector2(370, 216), Vector2(540, 36), 28, Pix.WARN)
-	Pix.lbl(ui, "%d science points in %d s. The crew returns to the lander." % [int(points), int(GameState.eva_seconds)],
-		Vector2(370, 256), Vector2(540, 30), 17, Pix.TEXT)
-	var y := 296.0
+	var elapsed := clampf(t_total - maxf(0.0, t_left), 0.0, t_total)
+	var used_btu := suit.capacity_btu - suit.energy_btu
+	var food_kcal := Stamina.eva_food_kcal(elapsed)
+	Pix.panel(ui, Vector2(340, 180), Vector2(600, 360))
+	Pix.lbl(ui, "EVA OVER", Vector2(370, 196), Vector2(540, 36), 28, Pix.WARN)
+	Pix.lbl(ui, reason, Vector2(370, 236), Vector2(540, 26), 15, Pix.DIM)
+	Pix.lbl(ui, "%d science points in %d s. Suit energy used %d Btu (~%d kcal of extra food)." % [
+		int(points), int(elapsed), int(used_btu), int(food_kcal)],
+		Vector2(370, 266), Vector2(540, 46), 16, Pix.TEXT)
+	var y := 318.0
 	for k in ["ice", "regolith", "ilmenite", "helium3"]:
 		Pix.lbl(ui, "%s  x%d  = %d pts" % [String(res[k]["name"]), int(counts.get(k, 0)), int(counts.get(k, 0)) * int(res[k]["pts"])],
 			Vector2(370, y), Vector2(300, 22), 15, Pix.DIM)
 		y += 22.0
-	Pix.btn(ui, "BACK TO SHIP >", Vector2(370, 410), Vector2(260, 50), func():
-		GameState.finish_explore(points, counts)
+	Pix.btn(ui, "BACK TO SHIP >", Vector2(370, 438), Vector2(260, 50), func():
+		GameState.finish_explore(points, counts, used_btu, food_kcal, t_total)
 		go("flight"))
 	queue_redraw()
 
@@ -167,3 +206,13 @@ func draw_extra() -> void:
 	draw_rect(Rect2(pl.x - 8, pl.y - 18, 16, 20), Color("f2f2f2"))
 	draw_rect(Rect2(pl.x - 6, pl.y - 26, 12, 10), Color("ffe8b0"))
 	draw_rect(Rect2(pl.x - 4, pl.y - 24, 8, 5), Color("1fb6ff"))
+	# suit stamina bar (top right, under the clock)
+	if suit != null:
+		var f := clampf(suit.fraction(), 0.0, 1.0)
+		var col := Pix.GOOD if f > 0.35 else (Pix.WARN if f > 0.15 else Pix.BAD)
+		draw_rect(Rect2(978, 46, 284, 18), Color("0b1026"))
+		draw_rect(Rect2(978, 46, 284 * f, 18), col)
+		draw_rect(Rect2(978, 46, 284, 1), Color("e8f1ff"))
+		draw_rect(Rect2(978, 63, 284, 1), Color("e8f1ff"))
+		draw_rect(Rect2(978, 46, 1, 18), Color("e8f1ff"))
+		draw_rect(Rect2(1261, 46, 1, 18), Color("e8f1ff"))

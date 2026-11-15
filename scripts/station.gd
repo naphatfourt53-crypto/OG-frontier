@@ -11,7 +11,7 @@ const ROLE_COL := {"core": Color("4fd1ff"), "habitat": Color("5dff9a"), "hangar"
 
 const TUTORIAL := [
 	{"title": "1. This station is home",
-	 "body": "The Core Hub is the last safe place for the crew. Coloured modules are built; purple \"+\" slots cost Data to grow.\n\nData comes from missions. Spend it on a Greenhouse (+storage), Science Lab (more Data), Cargo Bay (+budget), Heavy Dock (+lift limit), Relay Array (+comms) or Solar Wing (+power)."},
+	 "body": "The ISS is the last safe place for the crew. Coloured modules are built; purple \"+\" slots cost Data to grow.\n\nData comes from missions. Spend it on a Greenhouse (+storage), Science Lab (more Data), Cargo Bay (+budget), Heavy Dock (+lift limit), Relay Array (+comms) or Solar Wing (+power)."},
 	{"title": "2. Hangar: design the ship",
 	 "body": "Seven parts, three options each: Cockpit, Engine, Fuel Tank, Life Support, Power, Storage, Antenna.\n\nWatch Mass (lift limit), Power (net kW), Budget and Delta-v. Green numbers pass, red numbers fail. \"Load sample design\" gives you a ship that can fly the Moon mission."},
 	{"title": "3. Mission Control: fly it",
@@ -42,7 +42,7 @@ func refresh() -> void:
 		GameState.station_data, GameState.food_store, GameState.smelter_points(),
 		int(GameState.C.get("smelter_target", 165)), GameState.smelter_pct() * 100.0, GameState.best_score],
 		Vector2(24, 62), Vector2(900, 20), 13, Pix.TEXT)
-	info = Pix.lbl(ui, "Click a module. Purple '+' slots grow the station - they cost Data earned on missions.", Vector2(24, 660), Vector2(1000, 50), 16, Pix.DIM)
+	info = Pix.lbl(ui, "Click a module. Purple '+' slots grow the station - they cost Data earned on missions.", Vector2(210, 660), Vector2(800, 50), 16, Pix.DIM)
 	for m in GameState.data["station_modules"]:
 		var built: bool = GameState.built.has(m["id"])
 		var parent_ok: bool = m["parent"] == "" or GameState.built.has(m["parent"])
@@ -63,6 +63,10 @@ func refresh() -> void:
 		ui.add_child(b)
 	Pix.btn(ui, "?", Vector2(1104, 14), Vector2(44, 36), open_tutorial)
 	Pix.btn(ui, "Menu", Vector2(1160, 14), Vector2(100, 36), func(): go("menu"))
+	# Right-hand column: the two rooms the brief asks for plus the full tutorial.
+	Pix.btn(ui, "CREW CABIN", Vector2(1040, 110), Vector2(206, 40), func(): go("ship"))
+	Pix.btn(ui, "TERMINAL", Vector2(1040, 158), Vector2(206, 40), func(): go("computer"))
+	Pix.btn(ui, "HOW TO PLAY", Vector2(1040, 206), Vector2(206, 40), func(): go("tutorial"))
 	Pix.lbl(ui, "Mission Control, Apollo 9 - NASA", Vector2(1048, 684), Vector2(206, 18), 11, Color(0.55, 0.62, 0.78))
 	queue_redraw()
 
@@ -75,6 +79,13 @@ func on_module(m: Dictionary) -> void:
 				return
 			"control":
 				go("mission")
+				return
+			"core":
+				go("computer")
+				return
+			"habitat", "greenhouse", "lab", "exercise":
+				# These are all rooms inside the crew cabin.
+				go("ship")
 				return
 			_:
 				info.text = "%s - %s" % [m["name"], m["effect"]]

@@ -3,7 +3,7 @@ extends SceneTree
 # Run:  Godot_v4.7.2-stable_win64.exe --headless --path . -s tests/smoke_test.gd
 # Prints PASS, or FAIL <why> and exits non-zero. Never touches the player's save.
 
-const SCENES := ["menu", "station", "hangar", "mission", "flight", "explore", "report"]
+const SCENES := ["menu", "story", "tutorial", "station", "ship", "computer", "hangar", "mission", "flight", "explore", "report"]
 const REASONS := ["Starvation", "Oxygen Depletion", "Ship Destruction", "Power Failure", "Stranded"]
 const GOLDEN := "res://tests/golden.json"
 const TOL := 0.01
@@ -36,6 +36,7 @@ func _run() -> void:
 	_test_smart_run()
 	_test_scenes()
 	_test_weak_run()
+	_test_new_systems()
 	_test_golden()
 
 	if fails.is_empty():
@@ -134,8 +135,75 @@ func _test_scenes() -> void:
 		node.queue_free()
 	_check(true, "")
 
-# ---------- parity with tools/balance_check.py ----------
+# ---------- new station / EVA systems ----------
 
+func _test_new_systems() -> void:
+	gs.reset_all()
+	gs.station_data = 200
+	# Greenhouse + farm: build it, advance a full lettuce cycle, harvest into the food store.
+	_check(gs.build_module("greenhouse"), "greenhouse can be built with Data")
+	gs.ensure_plot()
+	var p: Dictionary = gs.plots[0]
+	var before_age := float(p["age_days"])
+	var tr: Dictionary = gs.tend_plot(30.0)
+	_check(bool(tr.get("ok", false)), "tending the greenhouse plot succeeds")
+	_check(float(gs.plots[0]["age_days"]) > before_age, "greenhouse plot ages when tended")
+	_check(gs.plot_ready(), "lettuce plot is ready after a full cycle")
+	var food_before: float = gs.food_store
+	var hr: Dictionary = gs.harvest_plot()
+	_check(bool(hr.get("ok", false)), "harvest succeeds when the plot is ready")
+	_check(gs.food_store > food_before, "harvest adds food to the ISS store")
+
+	# Prep gear costs Data and is consumed by the next launch.
+	gs.station_data = 100
+	var data_before: int = gs.station_data
+	var pr: Dictionary = gs.buy_prep("scout")
+	_check(bool(pr.get("ok", false)), "scout drone can be loaded in the cabin")
+	_check(gs.station_data == data_before - gs.prep_cost("scout"), "scout costs the configured Data")
+	_check(bool(gs.prep.get("scout", false)), "scout flag is set for the next flight")
+
+	# Food from the ISS reduces packed food; the scout survives into the run state.
+	gs.load_sample_design()
+	gs.food_store = 0.0
+	var dry: Dictionary = gs.analyze("moon")
+	gs.food_store = 60.0
+	var with_food: Dictionary = gs.analyze("moon")
+	_check(float(with_food["need"]["food"]) <= float(dry["need"]["food"]),
+		"ISS food store reduces the packed-food requirement")
+	_check(float(with_food["food_store_used"]) > 0.0, "analysis reports how much ISS food is used")
+	var fs_before: float = gs.food_store
+	gs.start_run("moon")
+	_check(bool(gs.run.get("scout", false)), "scout drone is carried into the flight")
+	_check(float(gs.run.get("rad_mult", 1.0)) <= 1.0, "radiation multiplier is stored on the run")
+	_check(gs.food_store < fs_before, "launch consumes the ISS food that offsets packed food")
+	_check(absf(float(gs.run["stock"]["food"]) - (float(with_food["pack"]["food"]) + float(with_food["food_store_used"]))) < 0.01,
+		"the offset ISS food is loaded aboard instead of being lost")
+	_check(not bool(gs.prep.get("scout", true)), "prep gear is spent at launch")
+
+	# In-flight activity spends supplies but returns the advertised benefit.
+	var raw_before := float(gs.run["data_raw"])
+	var day_before := float(gs.run["day"])
+	var cr: Dictionary = gs.crew_activity("study")
+	_check(bool(cr.get("ok", false)), "crew can study during the flight")
+	_check(float(gs.run["data_raw"]) > raw_before, "studying in flight adds science")
+	_check(float(gs.run["day"]) > day_before, "a crew activity advances the flight clock")
+
+	# Stamina numbers and the exercise penalty come from the data files.
+	var full := Stamina.capacity_for("ECLSS Advanced", true)
+	var no_gym := Stamina.capacity_for("ECLSS Advanced", false)
+	_check(full > no_gym, "exercise module raises EVA stamina capacity")
+	_check(Stamina.eva_food_kcal(60.0) > 0.0, "EVA time converts to extra food energy")
+
+	# Dossiers must be complete for both mission files.
+	for mid in ["moon", "mars"]:
+		var m: Dictionary = gs.mission(mid)
+		for key in ["environment", "hazards", "resources", "gear", "scout_note"]:
+			_check(m.has(key) and not (typeof(m[key]) == TYPE_ARRAY and m[key].is_empty()),
+				"mission %s dossier has %s" % [mid, key])
+	_check(gs.SAVE_VERSION >= 4, "save version covers story/day/food/prep fields")
+	gs.reset_all()
+
+# ---------- parity with tools/balance_check.py ----------
 func _flat(a: Dictionary) -> Dictionary:
 	return {
 		"dry_kg": a["dry_kg"], "prop_kg": a["prop_kg"], "total_kg": a["total_kg"],

@@ -24,11 +24,11 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 
 # 1. gate หลัก (ไม่ต้องมีหน้าต่าง)
 & $godot --headless --path . -s tests/smoke_test.gd
-#    ต้องจบด้วย: PASS smoke_test (121 checks)
+#    ต้องจบด้วย: PASS smoke_test (161 checks)
 
 # 2. ภาพทุกหน้าจอ (ต้องมีหน้าต่างจริง)
 & $godot --path . -s tools/screenshots.gd --resolution 1280x720
-#    ผลลัพธ์: tests/out/01_menu.png ... 11_tutorial.png
+#    ผลลัพธ์: tests/out/01_menu.png ... 18_crew.png
 
 # 2b. ตรวจเสียง (ต้องมีหน้าต่างจริง/อุปกรณ์เสียง)
 & $godot --path . -s tools/audio_check.gd
@@ -61,17 +61,25 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 | `scripts/sfx.gd` | autoload `Sfx`: pool 8 players, mute ตาม `GameState.sound_on`, no-op ใน headless |
 | `scripts/screen.gd` | คลาสแม่ของทุกหน้า: วาดดาว, fade 0.25 s, Esc back, Enter |
 | `scripts/pix.gd` | palette, `lbl/btn/panel`, `draw_ship`, `tex/photo/photo_frame` |
-| `scripts/menu.gd` | เมนู + settings overlay |
-| `scripts/station.gd` | ต้นไม้โมดูล + tutorial overlay |
-| `scripts/hangar.gd` | เลือก 7 ชิ้นส่วน + สไลเดอร์ propellant + stats |
-| `scripts/mission.gd` | แผนการบิน + LAUNCH |
-| `scripts/flight.gd` | step ภารกิจ, event dialog, HUD, typewriter, flash/shake |
-| `scripts/explore.gd` | EVA เก็บตัวอย่างตามเวลา |
-| `scripts/report.gd` | อธิบายผล + 6 ทรัพยากร + samples + rerun |
+| `scripts/menu.gd` | เมนู + settings overlay + story/tutorial links |
+| `scripts/story.gd` | briefing 3 สไลด์ (Earth crisis → ISS → loop) |
+| `scripts/tutorial.gd` | tutorial เต็ม 6 สไลด์ |
+| `scripts/station.gd` | ต้นไม้โมดูล + tutorial overlay + links ไปห้องลูกเรือ/terminal |
+| `scripts/ship.gd` | crew cabin: greenhouse, science, suit locker, galley, bunk, terminal |
+| `scripts/computer.gd` | ISS terminal v0.1 + mission dossiers + smelter status |
+| `scripts/hangar.gd` | เลือก 7 ชิ้นส่วน + สไลเดอร์ propellant + stats + food/prep |
+| `scripts/mission.gd` | แผนการบิน + DETAILS dossier + LAUNCH |
+| `scripts/flight.gd` | step ภารกิจ, event dialog, HUD, crew activities, typewriter, flash/shake |
+| `scripts/explore.gd` | EVA เก็บตัวอย่างตามเวลา + stamina/pace + scout time |
+| `scripts/report.gd` | อธิบายผล + 6 ทรัพยากร + samples + station support + rerun |
+| `scripts/farm.gd` | greenhouse crop math (NASA BVAD) |
+| `scripts/stamina.gd` | EVA stamina model (Btu, pace, reserve) |
+| `scripts/physics.gd` | orbital mechanics + solar flux |
 | `data/game_data.json` | ข้อมูลทั้งหมด |
+| `data/farm.json`, `data/stamina.json`, `data/physics.json` | ตัวเลขระบบใหม่ |
 | `tools/screenshots.gd` | harness ถ่ายภาพ (SceneTree script) |
 | `tools/audio_check.gd` | ตรวจเสียงทั้ง 7 ไฟล์ว่ามี stream และเล่นได้ |
-| `tests/smoke_test.gd` | gate 121 checks + parity กับ golden |
+| `tests/smoke_test.gd` | gate 161 checks + parity กับ golden |
 
 Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report → (hangar | station)`
 
@@ -100,7 +108,7 @@ Flow: `menu → station → (hangar | mission) → flight ⇄ explore → report
 
 ## 6) Definition of done (ทุกงาน)
 
-- [ ] เกมเปิดได้ และ `PASS smoke_test (121 checks)` (จำนวน check อาจเพิ่มได้)
+- [ ] เกมเปิดได้ และ `PASS smoke_test (161 checks)` (จำนวน check อาจเพิ่มได้)
 - [ ] ถ้าแตะ UI: ถ่าย screenshot หน้าที่เกี่ยวข้องแล้วเปิดดูจริง ไม่มีข้อความล้น/ทับ
 - [ ] ถ้าแตะเสียง: `AUDIO OK (7 sounds)` จาก `tools/audio_check.gd`
 - [ ] ถ้าแตะสูตร/คะแนน: `balance_check.py` ตรงกับ GDScript และ commit `tests/golden.json`

@@ -31,15 +31,27 @@
 
 ## 3) วิธีเล่น (5 นาทีแรก)
 
-1. **เมนู → START** เข้าสถานีอวกาศ โมดูลสีม่วง `+` คือส่วนที่ต่อเพิ่มได้ด้วย Data
-2. **Hangar** → กด **Load sample design** (ยานที่บินผ่านได้) หรือเลือกเองทั้ง 7 ชิ้น
+1. **เมนู → START** ครั้งแรกจะเห็น story briefing 3 สไลด์ (Earth กำลังร้อนจนอยู่ไม่ได้,
+   ISS คือ lobby, และ loop ของเกม) แล้วจึงเข้าสถานี
+   ครั้งต่อไป START จะข้าม briefing ไปที่ ISS ทันที; ปุ่ม **STORY** เปิดดูซ้ำได้
+2. **ISS LAST LAUNCH** คือ lobby: คลิกโมดูลสีเพื่อเข้าห้อง, โมดูลสีม่วง `+` ใช้ Data ต่อเพิ่ม
+   ปุ่ม **CREW CABIN** เข้าห้องลูกเรือ, **TERMINAL** เปิดคอมพิวเตอร์ v0.1,
+   **HOW TO PLAY** เปิด tutorial 6 สไลด์ และ `?` เปิด overlay สั้น 3 ขั้น
+3. **CREW CABIN** ห้องลูกเรือ: ปลูกผักใน Greenhouse, ศึกษา samples, พักผ่อน,
+   และโหลด **Radiation blanket** / **Scout drone** สำหรับเที่ยวบินถัดไป
+   อาหารที่ปลูกได้จะไปลดอาหารที่ต้องบรรทุก; scout เพิ่มเวลา EVA 25%
+4. **Hangar** → กด **Load sample design** (ยานที่บินผ่านได้) หรือเลือกเองทั้ง 7 ชิ้น
    พร้อมเลื่อนแถบ Propellant — ตัวเลขสีเขียว = ผ่าน, สีแดง = ไม่ผ่าน
    ปุ่มที่มี `*` คือตัวเลือกที่แนะนำใน sample design
-3. **Mission Control >** อ่านแผนการบิน (มี note แบบกระบวนงานจริงของ Apollo) → **LAUNCH**
-4. **Flight** กด **CONTINUE** ไปเรื่อยๆ เจอเหตุการณ์ให้เลือก 1 ใน 2
-   ทุกทางมีผลดี–ผลเสีย และข้อความใน log คือร่องรอยว่าอะไรทำให้ภารกิจพัง
-5. **Moon Walk** (ค่าเริ่มต้น 60 วินาที, ปรับได้ 30–300 วินาทีใน Settings)
-   WASD/ลูกศรเดิน, Space กลับยานก่อนเวลา เก็บตัวอย่าง 4 ชนิด:
+5. **Mission Control >** อ่านแผนการบิน (มี note แบบกระบวนงานจริงของ Apollo)
+   กด **DETAILS** เพื่ออ่าน dossier เต็ม: environment, hazards, resources, gear,
+   scout note และ station support (อาหาร, gear, EVA window) → **LAUNCH**
+6. **Flight** กด **CONTINUE** ไปเรื่อยๆ เจอเหตุการณ์ให้เลือก 1 ใน 2
+   ปุ่ม **CREW** เปิดกิจกรรมในเที่ยวบิน: ปลูกผัก (+2 kg food), ศึกษาตัวอย่าง (+5 science)
+   หรือเตรียม EVA (+8% hull) — ทุกอย่างใช้เวลาหนึ่งวันและกินเสบียงจริง
+7. **Moon Walk** (ค่าเริ่มต้น 60 วินาที, scout เพิ่มเป็น 75, ปรับได้ 30–300 วินาทีใน Settings)
+   WASD/ลูกศรเดิน, `1`/`2`/`3` เลือก easy/normal/hard, `Shift` burst, Space กลับยานก่อนเวลา
+   ชุดมี stamina bar; ถ้าพลังหมด EVA จบทันที เก็บตัวอย่าง 4 ชนิด:
 
    | ตัวอย่าง | แต้ม/ชิ้น | จำนวนสูงสุด | อยู่ที่ไหน |
    | --- | --- | --- | --- |
@@ -49,11 +61,13 @@
    | Helium-3 | 25 | 1 | ใจกลางหลุมมืด |
 
    คะแนนเต็มของ EVA = 165 แต้ม (เก็บครบทุกชิ้น)
-6. **Report** บอกเหตุผลที่ผ่าน/ไม่ผ่าน + ตาราง 6 ทรัพยากร (Mass, Power, Budget,
-   Data, Comms, Time) + สรุปตัวอย่างที่เก็บได้
+8. **Report** บอกเหตุผลที่ผ่าน/ไม่ผ่าน + ตาราง 6 ทรัพยากร (Mass, Power, Budget,
+   Data, Comms, Time) + สรุปตัวอย่างที่เก็บได้ + station support (food ที่ใช้,
+   scout/rad kit, พลังงานชุดที่ใช้, Helios ore)
    กด **Modify ship & rerun (same seed)** เพื่อแก้ยานแล้วลองใหม่ด้วยเหตุการณ์ชุดเดิม
-7. ผ่านภารกิจแรกแล้ว **ปลดล็อกดาวอังคาร** = จบ DEMO
-   เอา Data ไปต่อโมดูล: Greenhouse, Science Lab, Cargo Bay, Heavy Dock, Relay Array, Solar Wing
+9. ผ่านภารกิจแรกแล้ว **ปลดล็อกดาวอังคาร** = จบ DEMO
+   เอา Data ไปต่อโมดูล: Greenhouse, Science Lab, Exercise Bay, Cargo Bay, Heavy Dock,
+   Relay Array, Solar Wing
 
 ### ปุ่มลัด
 
@@ -61,10 +75,13 @@
 | --- | --- |
 | เมาส์ | เมนู, เลือกชิ้นส่วน, ตอบเหตุการณ์ |
 | WASD / ลูกศร | เดินบนดวงจันทร์ |
+| 1 / 2 / 3 | เลือก pace easy / normal / hard |
+| Shift | burst (เร็วที่สุด แต่ stamina หมดเร็ว) |
 | Space | กลับยานก่อนหมดเวลา EVA |
-| Enter | ไปต่อในหน้า Flight |
+| Enter | ไปต่อในหน้า Flight / tutorial |
 | Esc | ย้อนกลับ (สถานี, Hangar, Mission, Report) |
-| `?` (มุมขวาบนของสถานี) | เปิด tutorial ซ้ำ |
+| `?` (มุมขวาบนของสถานี) | เปิด tutorial overlay สั้น |
+| HOW TO PLAY (เมนู/สถานี) | เปิด tutorial เต็ม 6 สไลด์ |
 | SETTINGS (เมนู) | ปรับเวลา EVA, เปิด/ปิดเสียง, replay tutorial |
 
 ## 4) ตัวเลขทั้งหมดอยู่ที่เดียว
@@ -104,10 +121,11 @@ godot --headless --path . -s tests/smoke_test.gd
   smart run: success=true score=1117 data=48
   weak run: reason=Stranded
   parity checked 5 design(s)
-PASS smoke_test (121 checks)
+PASS smoke_test (161 checks)
 ```
 
-เทสต์นี้ตรวจ: เปิดได้ทุกฉาก, สูตรจรวด/เสบียง/ไฟฟ้า, Game Over 5 แบบ,
+เทสต์นี้ตรวจ: เปิดได้ทุกฉาก (รวม story, tutorial, crew cabin, terminal),
+สูตรจรวด/เสบียง/ไฟฟ้า, Game Over 5 แบบ, greenhouse/prep/stamina/crew activity,
 คะแนน, save/load (รวม save เวอร์ชันเก่า), และตัวเลข GDScript ตรงกับ Python ภายใน 1%
 และ **ไม่แตะเซฟของผู้เล่น** (`GameState.skip_save = true`)
 
@@ -137,7 +155,8 @@ python3 tools/balance_check.py --emit-golden
 & "C:\path\to\Godot_v4.7.2-stable_win64_console.exe" --path . -s tools/screenshots.gd --resolution 1280x720
 ```
 
-ไฟล์จะออกที่ `tests/out/01_menu.png` … `11_tutorial.png` (โฟลเดอร์นี้ไม่ถูก commit)
+ไฟล์จะออกที่ `tests/out/01_menu.png` … `18_crew.png` (โฟลเดอร์นี้ไม่ถูก commit)
+รวม story briefing, tutorial เต็ม, crew cabin, terminal, mission dossier และ crew activity
 ใช้ตรวจ layout หลังแก้ UI ทุกครั้ง — โดยเฉพาะข้อความยาวๆ ที่อาจล้นกรอบ
 
 ### 5.4 ตรวจเสียง
@@ -174,13 +193,18 @@ ogfrontier/
 ├── project.godot            # ตั้งค่าโปรเจกต์ (features = 4.7)
 ├── export_presets.cfg       # Web + Windows Desktop
 ├── data/game_data.json      # ตัวเลขเกมทั้งหมด
-├── scenes/*.tscn            # 7 หน้าจอ (Control + script)
+├── data/farm.json           # ตัวเลข greenhouse (NASA BVAD)
+├── data/stamina.json        # EVA stamina / pace
+├── data/physics.json        # orbital mechanics + solar flux
+├── scenes/*.tscn            # 11 หน้าจอ (Control + script)
 ├── scripts/
 │   ├── game_state.gd        # autoload: สูตร, คะแนน, save/load, สถานะ run
 │   ├── sfx.gd               # autoload: pool 8 players + mute
 │   ├── screen.gd            # คลาสแม่: fade, Esc/Enter, พื้นหลังดาว
 │   ├── pix.gd               # palette, ปุ่ม/ข้อความ, วาดยาน, โหลดรูป NASA
-│   ├── menu.gd station.gd hangar.gd mission.gd flight.gd explore.gd report.gd
+│   ├── menu.gd story.gd tutorial.gd station.gd ship.gd computer.gd
+│   ├── hangar.gd mission.gd flight.gd explore.gd report.gd
+│   ├── farm.gd stamina.gd physics.gd
 ├── assets/
 │   ├── CREDITS.md           # ที่มาและลิขสิทธิ์รูป/เสียง
 │   ├── nasa/*.jpg           # รูป NASA ขนาดกลาง 4 รูป
@@ -194,7 +218,7 @@ ogfrontier/
     └── audio_check.gd       # ตรวจว่าเสียงทั้ง 7 ไฟล์เล่นได้
 ```
 
-การเชื่อมหน้าจอ: `menu → station → (hangar | mission) → flight ⇄ explore → report → (hangar | station)`
+การเชื่อมหน้าจอ: `menu → story → station → (ship | computer | hangar | mission) → flight ⇄ explore → report`
 ทุกหน้าเปลี่ยนฉากด้วย `go("ชื่อฉาก")`
 
 ## 8) ฟิสิกส์จริงที่ใช้ (จาก Game Data Book)
@@ -213,14 +237,15 @@ ogfrontier/
 
 - ตำแหน่ง: `user://ogfrontier_save.json`
   (Windows: `%APPDATA%\Godot\app_userdata\OG-Frontier Prototype\`)
-- `save_version` ปัจจุบัน = **3** เพิ่ม `eva`, `tutorial` และ `sound`
-- เซฟเวอร์ชัน 1–2 ยังโหลดได้ เพราะคีย์ใหม่มีค่า default เท่ากับพฤติกรรมเดิม
+- `save_version` ปัจจุบัน = **4** เพิ่ม `story`, `day`, `food`, `prep`, `plots`, `ore`
+- เซฟเวอร์ชัน 1–3 ยังโหลดได้ เพราะคีย์ใหม่มีค่า default เท่ากับพฤติกรรมเดิม
 - ปุ่ม **RESET SAVE** ที่เมนูลบเซฟทั้งหมด
 - เครื่องมือเทสต์/สกรีนช็อตตั้ง `GameState.skip_save = true` ไม่ทับเซฟผู้เล่น
 
 ## 10) Git — ทำงานเป็นทีม
 
-Repo นี้มี branch `main` (snapshot แรก) และ `overnight/opencode` (งานคืนนี้)
+Repo นี้ทำงานบน branch `main` (งานล่าสุด) และ push ขึ้น
+`https://github.com/naphatfourt53-crypto/OG-Frontier.git` แบบปกติ (ไม่ force push)
 
 ```bash
 # ก่อนเริ่มงาน
