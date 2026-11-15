@@ -17,13 +17,18 @@ func build() -> void:
 
 func refresh() -> void:
 	Pix.clear(ui)
-	Pix.lbl(ui, "CREW CABIN - ISS DOCK", Vector2(24, 12), Vector2(600, 34), 26, Pix.EDGE)
+	var header: Panel = Pix.panel(ui, Vector2(12, 6), Vector2(1256, 82))
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	Pix.lbl(ui, "CREW CABIN - ISS DOCK", Vector2(24, 10), Vector2(600, 34), 26, Pix.EDGE)
 	Pix.lbl(ui, "DAY %03d   %s   |   LOW EARTH ORBIT" % [GameState.day, GameState.date_text()],
-		Vector2(660, 18), Vector2(590, 24), 15, Pix.WARN)
-	status = Pix.lbl(ui, "Data %d   |   Food store %.1f kg   |   Ore %d / %d pts   |   Smelter %.0f%%" % [
-		GameState.station_data, GameState.food_store, GameState.smelter_points(),
-		int(GameState.C.get("smelter_target", 165)), GameState.smelter_pct() * 100.0],
-		Vector2(24, 50), Vector2(1200, 24), 15, Pix.TEXT)
+		Vector2(660, 16), Vector2(590, 24), 15, Pix.WARN)
+	Pix.chip(ui, Vector2(24, 52), "data", "Data %d" % GameState.station_data, Pix.EDGE)
+	Pix.chip(ui, Vector2(230, 52), "food", "Food %.1f kg" % GameState.food_store, Pix.GOOD)
+	var target := float(GameState.C.get("smelter_target", 165))
+	Pix.chip(ui, Vector2(430, 52), "ore", "Ore %d / %d pts" % [GameState.smelter_points(), int(target)],
+		Pix.WARN, clampf(float(GameState.smelter_points()) / target, 0.0, 1.0))
+	Pix.chip(ui, Vector2(660, 52), "smelter", "Smelter %.0f%%" % (GameState.smelter_pct() * 100.0),
+		Pix.ORANGE, GameState.smelter_pct())
 	info = Pix.lbl(ui, "Pick a station in the cabin. Every activity costs one day unless it says otherwise.",
 		Vector2(24, 664), Vector2(1220, 44), 15, Pix.DIM)
 
@@ -43,7 +48,7 @@ func _panel_title(pos: Vector2, title: String, sub: String, height: float = 180.
 
 func _greenhouse_panel() -> void:
 	var p := Vector2(40, 92)
-	_panel_title(p, "GREENHOUSE", "Crop, water and nutrients. NASA BVAD crop data.", 256.0)
+	_panel_title(p, "GREENHOUSE", "Crop, water and nutrients. NASA BVAD crop data.", 352.0)
 	if not GameState.has_module("greenhouse"):
 		Pix.lbl(ui, "Not installed.\nBuild the Greenhouse at the ISS first.", p + Vector2(14, 70), Vector2(252, 50), 14, Pix.BAD)
 		Pix.btn(ui, "BACK TO ISS", p + Vector2(14, 130), Vector2(252, 36), func(): go("station"))
@@ -52,27 +57,42 @@ func _greenhouse_panel() -> void:
 	var plot: Dictionary = GameState.plots[0]
 	var crop := Farm.crop(String(plot["crop"]))
 	var ready := Farm.crop_ready(plot)
-	Pix.lbl(ui, "%s  day %d / %d%s" % [crop["name"], int(plot["age_days"]), int(crop["growth_days"]),
-		"  READY" if ready else ""], p + Vector2(14, 66), Vector2(252, 20), 14, Pix.GOOD if ready else Pix.TEXT)
-	Pix.bar(ui, p + Vector2(14, 88), Vector2(252, 10), float(plot["water_pct"]) / 100.0, Color("3fa7ff"))
-	Pix.lbl(ui, "Water %d%%" % int(plot["water_pct"]), p + Vector2(14, 98), Vector2(252, 14), 11, Pix.DIM)
-	Pix.bar(ui, p + Vector2(14, 116), Vector2(252, 10), float(plot["nutrient_pct"]) / 100.0, Color("ffc857"))
-	Pix.lbl(ui, "Nutrients %d%%   |   Packs %d" % [int(plot["nutrient_pct"]), GameState.nutrient_packs],
-		p + Vector2(14, 126), Vector2(252, 14), 11, Pix.DIM)
-	Pix.lbl(ui, GameState.greenhouse_alert(), p + Vector2(14, 142), Vector2(252, 30), 11, Pix.WARN)
-	if ready:
-		Pix.btn_primary(ui, "HARVEST", p + Vector2(14, 176), Vector2(252, 34), _harvest)
+	var empty := float(plot["age_days"]) <= 0.0
+	var title := "%s%s" % [crop["name"], "  READY TO HARVEST" if ready else ("  (empty plot)" if empty else "")]
+	Pix.lbl(ui, title, p + Vector2(14, 66), Vector2(252, 20), 14, Pix.GOOD if ready else Pix.TEXT)
+	var grow := float(plot["age_days"]) / maxf(1.0, float(crop["growth_days"]))
+	_meter(p + Vector2(14, 90), "Growth", grow, Pix.GOOD, "%d/%d d" % [int(plot["age_days"]), int(crop["growth_days"])])
+	_meter(p + Vector2(14, 112), "Water", float(plot["water_pct"]) / 100.0, Color("3fa7ff"),
+		"%d%%" % int(plot["water_pct"]))
+	_meter(p + Vector2(14, 134), "Nutrients", float(plot["nutrient_pct"]) / 100.0, Color("ffc857"),
+		"%d%%" % int(plot["nutrient_pct"]))
+	Pix.lbl(ui, GameState.greenhouse_alert(), p + Vector2(14, 156), Vector2(252, 30), 11, Pix.WARN)
+	if empty:
+		Pix.btn_primary(ui, "CHOOSE CROP: %s >" % crop["name"], p + Vector2(14, 190), Vector2(252, 34), _next_crop)
+	elif ready:
+		Pix.btn_primary(ui, "HARVEST", p + Vector2(14, 190), Vector2(252, 34), _harvest)
 	else:
-		Pix.btn_ghost(ui, "WATER (1 kg)", p + Vector2(14, 176), Vector2(122, 34), _water)
-		Pix.btn_ghost(ui, "FEED (1 pack)", p + Vector2(144, 176), Vector2(122, 34), _feed)
-	Pix.btn_ghost(ui, "TEND +1 DAY", p + Vector2(14, 216), Vector2(252, 30), _tend)
+		Pix.btn_ghost(ui, "WATER (1 kg)", p + Vector2(14, 190), Vector2(122, 34), _water)
+		Pix.btn_ghost(ui, "FEED (1 pack)", p + Vector2(144, 190), Vector2(122, 34), _feed)
+	var wcost := int(GameState.farm_game()["water_data_cost_per_purchase"])
+	var pcost := int(GameState.farm_game()["nutrient_data_cost_per_pack"])
+	var wkg := int(GameState.farm_game()["water_kg_per_purchase"])
+	if GameState.station_data >= wcost:
+		Pix.btn_ghost(ui, "BUY WATER: %d Data  (+%d kg)" % [wcost, wkg], p + Vector2(14, 232), Vector2(252, 30), _buy_water)
+	else:
+		Pix.btn_blocked(ui, "BUY WATER", "need %d Data" % wcost, p + Vector2(14, 232), Vector2(252, 30), _buy_water)
+	if GameState.station_data >= pcost:
+		Pix.btn_ghost(ui, "BUY NUTRIENT PACK: %d Data" % pcost, p + Vector2(14, 268), Vector2(252, 30), _buy_pack)
+	else:
+		Pix.btn_blocked(ui, "BUY NUTRIENT PACK", "need %d Data" % pcost, p + Vector2(14, 268), Vector2(252, 30), _buy_pack)
+	Pix.btn_ghost(ui, "TEND +1 DAY", p + Vector2(14, 304), Vector2(252, 30), _tend)
 
 func _science_panel() -> void:
 	var p := Vector2(340, 92)
 	_panel_title(p, "SCIENCE DESK", "Study the samples brought back from the surface.")
-	var bonus := " (+25% lab bonus)" if GameState.has_module("lab") else ""
-	Pix.lbl(ui, "Adds %d Data and advances one day%s." % [int(GameState.C.get("study_data", 8)), bonus],
-		p + Vector2(14, 70), Vector2(252, 50), 14, Pix.TEXT)
+	var bonus := "  (+25% Lab)" if GameState.has_module("lab") else ""
+	Pix.lbl(ui, "Cost: 1 Day  |  Gain: +%d Data%s" % [int(GameState.C.get("study_data", 8)), bonus],
+		p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
 	Pix.btn(ui, "STUDY +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _study)
 
 func _locker_panel() -> void:
@@ -87,7 +107,7 @@ func _locker_panel() -> void:
 	Pix.lbl(ui, "Scout data = +25% EVA time.", p + Vector2(14, 152), Vector2(252, 18), 12, Pix.DIM)
 
 func _galley_panel() -> void:
-	var p := Vector2(40, 372)
+	var p := Vector2(40, 448)
 	_panel_title(p, "GALLEY", "Hot meal from the ISS food store.")
 	Pix.lbl(ui, "Cost: 2 kg food  |  Gain: crew mood", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
 	if GameState.food_store < 2.0:
@@ -96,13 +116,13 @@ func _galley_panel() -> void:
 		Pix.btn_primary(ui, "COOK +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _cook)
 
 func _bunk_panel() -> void:
-	var p := Vector2(340, 372)
+	var p := Vector2(340, 448)
 	_panel_title(p, "BUNK", "Sleep one full day. The clock never stops.")
 	Pix.lbl(ui, "Cost: 1 Day  |  Gain: greenhouse grows", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
 	Pix.btn_ghost(ui, "REST +1 DAY", p + Vector2(14, 132), Vector2(252, 36), _rest)
 
 func _terminal_panel() -> void:
-	var p := Vector2(640, 372)
+	var p := Vector2(640, 448)
 	_panel_title(p, "SHIP TERMINAL", "Mission files, dossiers and the smelter status.")
 	Pix.lbl(ui, "Cost: free  |  Gain: read the mission files", p + Vector2(14, 70), Vector2(252, 40), 13, Pix.TEXT)
 	Pix.btn_ghost(ui, "OPEN TERMINAL >", p + Vector2(14, 132), Vector2(252, 36), func(): go("computer"))
@@ -116,11 +136,28 @@ func _side_panel() -> void:
 		GameState.food_store,
 		"+10% (Exercise Bay)" if GameState.has_module("exercise") else "standard"],
 		Vector2(978, 138), Vector2(250, 90), 14, Pix.TEXT)
-	Pix.lbl(ui, "NEXT OBJECTIVE", Vector2(978, 246), Vector2(250, 22), 16, Pix.WARN)
-	Pix.lbl(ui, _objective_text(), Vector2(978, 272), Vector2(250, 100), 14, Pix.TEXT)
-	Pix.btn_primary(ui, "MISSION CONTROL >", Vector2(978, 390), Vector2(250, 40), func(): go("mission"))
-	Pix.btn_ghost(ui, "< BACK TO ISS", Vector2(978, 440), Vector2(250, 40), func(): go("station"))
-	Pix.btn_ghost(ui, "HANGAR", Vector2(978, 490), Vector2(250, 40), func(): go("hangar"))
+	var objective := Pix.panel(ui, Vector2(972, 236), Vector2(262, 136))
+	Pix.glow(objective, Pix.WARN)
+	Pix.lbl(ui, "NEXT OBJECTIVE", Vector2(984, 244), Vector2(240, 22), 16, Pix.WARN)
+	Pix.lbl(ui, _objective_text(), Vector2(984, 270), Vector2(240, 96), 14, Pix.TEXT)
+	var dest := _objective_dest()
+	Pix.btn_primary(ui, "[Go Now] %s >" % ("HANGAR" if dest == "hangar" else "MISSION CONTROL"),
+		Vector2(978, 384), Vector2(250, 40), func(): go(dest))
+	Pix.btn_ghost(ui, "MISSION CONTROL >", Vector2(978, 430), Vector2(250, 40), func(): go("mission"))
+	Pix.btn_ghost(ui, "HANGAR", Vector2(978, 474), Vector2(250, 40), func(): go("hangar"))
+	Pix.btn_ghost(ui, "< BACK TO ISS", Vector2(978, 518), Vector2(250, 40), func(): go("station"))
+
+func _ship_parts_chosen() -> int:
+	var total := 0
+	for v in GameState.design.values():
+		total += int(v)
+	return total
+
+# The first step of the guide is the hangar; after that, Mission Control.
+func _objective_dest() -> String:
+	if GameState.history.is_empty() and _ship_parts_chosen() <= 0:
+		return "hangar"
+	return "mission"
 
 func _objective_text() -> String:
 	if GameState.smelter_pct() >= 1.0:
@@ -136,6 +173,30 @@ func _tend() -> void:
 
 func _harvest() -> void:
 	var r := GameState.harvest_plot()
+	info.text = String(r["text"])
+	refresh()
+
+# One meter row: name, bar, value. The text sits beside the bar, never on top of it.
+func _meter(pos: Vector2, meter_name: String, value: float, col: Color, text: String) -> void:
+	Pix.lbl(ui, meter_name, pos + Vector2(0, -2), Vector2(70, 16), 11, Pix.DIM)
+	Pix.bar(ui, pos + Vector2(72, 2), Vector2(128, 10), value, col)
+	Pix.lbl(ui, text, pos + Vector2(206, -2), Vector2(60, 16), 11, Pix.TEXT)
+
+func _next_crop() -> void:
+	var ids: Array = Farm.cfg()["crops"].keys()
+	var cur := String(GameState.plots[0]["crop"])
+	var next := String(ids[(ids.find(cur) + 1) % ids.size()])
+	var r := GameState.set_crop(next)
+	info.text = String(r["text"])
+	refresh()
+
+func _buy_water() -> void:
+	var r := GameState.buy_water()
+	info.text = String(r["text"])
+	refresh()
+
+func _buy_pack() -> void:
+	var r := GameState.buy_nutrients()
 	info.text = String(r["text"])
 	refresh()
 

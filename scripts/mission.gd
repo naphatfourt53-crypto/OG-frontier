@@ -66,16 +66,16 @@ func refresh() -> void:
 		for t in a["issues"]:
 			Pix.lbl(ui, "! " + String(t), Vector2(450, yy), Vector2(800, 22), 15, Pix.BAD)
 			yy += 22
-	Pix.btn(ui, "< Station", Vector2(20, 660), Vector2(150, 40), func(): go("station"))
-	Pix.btn(ui, "Edit ship", Vector2(180, 660), Vector2(150, 40), func(): go("hangar"))
-	Pix.btn(ui, "DETAILS", Vector2(340, 660), Vector2(140, 40), open_dossier)
-	Pix.btn(ui, "New seed", Vector2(490, 660), Vector2(140, 40), func():
+	Pix.btn_ghost(ui, "< Station", Vector2(20, 660), Vector2(150, 40), func(): go("station"))
+	Pix.btn_ghost(ui, "Edit ship", Vector2(180, 660), Vector2(150, 40), func(): go("hangar"))
+	Pix.btn_ghost(ui, "DETAILS", Vector2(340, 660), Vector2(140, 40), open_dossier)
+	Pix.btn_ghost(ui, "New seed", Vector2(490, 660), Vector2(140, 40), func():
 		GameState.new_seed()
 		refresh())
-	var launch := Pix.btn(ui, "LAUNCH >", Vector2(960, 650), Vector2(290, 56), on_launch)
-	launch.disabled = not a["can_launch"]
-	if not a["can_launch"]:
-		Pix.lbl(ui, "Cannot launch: over budget or over lift limit.", Vector2(700, 668), Vector2(250, 40), 13, Pix.BAD)
+	if a["can_launch"]:
+		Pix.btn_primary(ui, "LAUNCH >", Vector2(960, 650), Vector2(290, 56), on_launch)
+	else:
+		Pix.btn_blocked(ui, "LAUNCH", "over budget or lift limit", Vector2(960, 650), Vector2(290, 56), on_launch)
 
 func on_launch() -> void:
 	GameState.save_game()

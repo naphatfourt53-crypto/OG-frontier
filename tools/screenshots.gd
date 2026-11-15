@@ -181,6 +181,16 @@ func _run() -> void:
 		await _capture("26_techbook_" + tab_name.to_lower())
 		await _close(tb)
 
+	# Phase 4: hover card on a hangar part (picture of the option and its stat bars).
+	var hg = await _open("hangar")
+	var part: Dictionary = gs.data["parts"][1]
+	var opt: Dictionary = part["options"][1]
+	Pix.card_show(hg.card, String(opt["name"]), String(part["name"]), String(opt["info"]), Pix.EDGE, hg._part_rows(part, opt))
+	hg.card.position = Vector2(420, 130)
+	await _frames(2)
+	await _capture("27_hangar_card")
+	await _close(hg)
+
 	if failures.is_empty():
 		print("SCREENSHOTS OK -> ", ProjectSettings.globalize_path(OUT_DIR))
 		quit(0)

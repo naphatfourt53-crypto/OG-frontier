@@ -85,6 +85,81 @@ static func btn(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Cal
 	parent.add_child(b)
 	return b
 
+# Hover card: a panel with a title, a one-line subtitle, a short text and small stat bars.
+# rows = [[label, value 0..1, shown text, colour], ...]
+static func card(parent: Node) -> Control:
+	var box := Control.new()
+	box.size = Vector2(320, 150)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.visible = false
+	parent.add_child(box)
+	return box
+
+static func card_show(box: Control, title: String, sub: String, body: String, col: Color, rows: Array) -> void:
+	clear(box)
+	var h := 104.0 + rows.size() * 22.0 + 8.0
+	box.size = Vector2(320, h)
+	var p := panel(box, Vector2.ZERO, box.size)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow(p, col)
+	lbl(box, title, Vector2(12, 10), Vector2(296, 22), 16, col)
+	lbl(box, sub, Vector2(12, 32), Vector2(296, 16), 12, DIM)
+	lbl(box, body, Vector2(12, 50), Vector2(296, 46), 12, TEXT)
+	var y := 100.0
+	for r in rows:
+		lbl(box, String(r[0]), Vector2(12, y), Vector2(70, 16), 11, DIM)
+		bar(box, Vector2(84, y + 3), Vector2(150, 9), float(r[1]), r[3])
+		lbl(box, String(r[2]), Vector2(240, y), Vector2(74, 16), 11, TEXT)
+		y += 22.0
+	box.visible = true
+
+static func card_attach(box: Control, b: Control, title: String, sub: String, body: String, col: Color, rows: Array) -> void:
+	b.mouse_entered.connect(func(): card_show(box, title, sub, body, col, rows))
+	b.mouse_exited.connect(func(): box.visible = false)
+
+# Resource chip for the top bar: a vector icon, a value, and an optional progress bar (0..1).
+static func chip(parent: Node, pos: Vector2, kind: String, text: String, col: Color, value: float = -1.0) -> void:
+	var c := Control.new()
+	c.position = pos
+	c.size = Vector2(16, 16)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(c)
+	c.draw.connect(func(): _draw_icon(c, kind, col))
+	lbl(parent, text, pos + Vector2(22, -4), Vector2(190, 22), 15, TEXT)
+	if value >= 0.0:
+		bar(parent, pos + Vector2(22, 20), Vector2(150, 6), value, col)
+
+static func _draw_icon(c: Control, kind: String, col: Color) -> void:
+	var s := c.size.x
+	var mid := Vector2(s * 0.5, s * 0.5)
+	match kind:
+		"data":
+			c.draw_circle(mid, s * 0.46, col.darkened(0.5))
+			c.draw_arc(mid, s * 0.46, 0.0, TAU, 24, col, 2.0)
+			c.draw_rect(Rect2(s * 0.28, s * 0.42, s * 0.44, s * 0.16), col)
+		"food":
+			var leaf := PackedVector2Array()
+			for i in 16:
+				var a := TAU * float(i) / 16.0
+				leaf.append(mid + Vector2(cos(a) * s * 0.44, sin(a) * s * 0.3).rotated(-0.7))
+			c.draw_colored_polygon(leaf, col)
+			c.draw_line(Vector2(s * 0.15, s * 0.85), Vector2(s * 0.8, s * 0.2), col.darkened(0.45), 2.0)
+		"ore":
+			c.draw_colored_polygon(PackedVector2Array([Vector2(s * 0.5, s * 0.06), Vector2(s * 0.94, s * 0.86),
+				Vector2(s * 0.06, s * 0.86)]), col)
+			c.draw_line(Vector2(s * 0.5, s * 0.38), Vector2(s * 0.7, s * 0.7), col.darkened(0.4), 1.5)
+		"smelter":
+			var hex := PackedVector2Array()
+			for i in 6:
+				var a := TAU * float(i) / 6.0 - PI / 6.0
+				hex.append(mid + Vector2(cos(a), sin(a)) * s * 0.46)
+			c.draw_colored_polygon(hex, col.darkened(0.25))
+			c.draw_circle(mid, s * 0.22, col)
+		"water":
+			c.draw_colored_polygon(PackedVector2Array([Vector2(s * 0.5, s * 0.04), Vector2(s * 0.9, s * 0.6),
+				Vector2(s * 0.1, s * 0.6)]), col)
+			c.draw_circle(Vector2(s * 0.5, s * 0.62), s * 0.36, col)
+
 # Primary CTA: solid cyan, the one button the player should press to move on.
 static func btn_primary(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Callable) -> Button:
 	var b := btn(parent, text, pos, size, cb)
@@ -145,9 +220,20 @@ static func btn_blocked(parent: Node, text: String, reason: String, pos: Vector2
 	b.modulate = Color(1, 1, 1, 0.75)
 	return b
 
+# A soft glow ring around the panel that holds the next thing to do.
+static func glow(p: Panel, col: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = PANEL
+	sb.set_border_width_all(2)
+	sb.border_color = col
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(col.r, col.g, col.b, 0.55)
+	sb.shadow_size = 14
+	sb.shadow_offset = Vector2.ZERO
+	p.add_theme_stylebox_override("panel", sb)
+
 # Progress bar (Data, Smelter, crop day, water, nutrients...). value 0..1.
-static func bar(parent: Node, pos: Vector2, size: Vector2, value: float, col: Color,
-		label: String = "", label_col: Color = Color("04121c")) -> void:
+static func bar(parent: Node, pos: Vector2, size: Vector2, value: float, col: Color) -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.12)
 	bg.position = pos
@@ -171,10 +257,6 @@ static func bar(parent: Node, pos: Vector2, size: Vector2, value: float, col: Co
 	outline.size = size + Vector2(2, 2)
 	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(outline)
-	if label != "":
-		var l := lbl(parent, label, pos, size, 12, label_col)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 static func sfx(key: String) -> void:
 	var loop := Engine.get_main_loop() as SceneTree

@@ -73,10 +73,11 @@ func build() -> void:
 		Vector2(654, sy), Vector2(590, 18), 12, Pix.DIM)
 	sy += 18.0
 	# moon samples collected during the EVA
-	Pix.lbl(self, _samples_text(r), Vector2(20, 506), Vector2(1240, 44), 15, Pix.TEXT)
+	# Placed below the SUPPORT block (it ends near y 530) so the two never overlap.
+	Pix.lbl(self, _samples_text(r), Vector2(20, 536), Vector2(1240, 24), 15, Pix.TEXT)
 	# decisions + score
 	var dec := "Decisions: " + ("none" if r["decisions"].is_empty() else "; ".join(PackedStringArray(r["decisions"])))
-	Pix.lbl(self, dec, Vector2(20, 550), Vector2(1240, 40), 13, Pix.DIM)
+	Pix.lbl(self, dec, Vector2(20, 562), Vector2(1240, 22), 13, Pix.DIM)
 	var prev := ""
 	if GameState.history.size() >= 2:
 		var p: Dictionary = GameState.history[GameState.history.size() - 2]

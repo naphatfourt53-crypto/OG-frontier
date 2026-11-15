@@ -5,6 +5,7 @@ var ui: Control
 var stats: Control
 var info: Label
 var fuel_label: Label
+var card: Control
 
 func build() -> void:
 	star_seed = 31
@@ -12,6 +13,7 @@ func build() -> void:
 	ui.size = Vector2(1280, 720)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
+	card = Pix.card(self)
 	stats = Control.new()
 	stats.size = Vector2(1280, 720)
 	# The stats layer covers the whole screen but only draws labels. Without IGNORE it
@@ -28,11 +30,11 @@ func rebuild() -> void:
 	info = Pix.lbl(ui, "Hover an option to read about it.", Vector2(20, 596), Vector2(600, 44), 15, Pix.DIM)
 	build_parts()
 	build_fuel()
-	Pix.btn(ui, "Load sample design", Vector2(20, 660), Vector2(190, 40), on_sample)
-	Pix.btn(ui, "< Station", Vector2(220, 660), Vector2(130, 40), func(): go("station"))
-	Pix.btn(ui, "Crew cabin", Vector2(360, 660), Vector2(140, 40), func(): go("ship"))
-	Pix.btn(ui, "Terminal", Vector2(510, 660), Vector2(120, 40), func(): go("computer"))
-	Pix.btn(ui, "Mission Control >", Vector2(1000, 660), Vector2(260, 44), func(): go("mission"))
+	Pix.btn_ghost(ui, "Load sample design", Vector2(20, 660), Vector2(190, 40), on_sample)
+	Pix.btn_ghost(ui, "< Station", Vector2(220, 660), Vector2(130, 40), func(): go("station"))
+	Pix.btn_ghost(ui, "Crew cabin", Vector2(360, 660), Vector2(140, 40), func(): go("ship"))
+	Pix.btn_ghost(ui, "Terminal", Vector2(510, 660), Vector2(120, 40), func(): go("computer"))
+	Pix.btn_primary(ui, "Mission Control >", Vector2(1000, 660), Vector2(260, 44), func(): go("mission"))
 	refresh_stats()
 
 func build_parts() -> void:
@@ -57,8 +59,39 @@ func build_parts() -> void:
 			b.pressed.connect(func(): pick(pid, idx))
 			b.mouse_entered.connect(func(): info.text = "%s - %s | mass %d kg, power %+.1f kW, cost %d" % [oo["name"], oo["info"], int(oo["mass"]), float(oo["power"]), int(oo["cost"])])
 			ui.add_child(b)
+			Pix.card_attach(card, b, String(o["name"]), String(p["name"]), String(o["info"]), Pix.EDGE, _part_rows(p, o))
 			i += 1
 		y += 66
+
+# Bars in the hover card are relative to the best option of the same part, so the
+# player can see at a glance which choice is heavy, strong or expensive.
+func _part_rows(part: Dictionary, o: Dictionary) -> Array:
+	var mmax := 1.0
+	var pmax := 0.001
+	var cmax := 1.0
+	for x in part["options"]:
+		mmax = maxf(mmax, float(x["mass"]))
+		pmax = maxf(pmax, absf(float(x["power"])))
+		cmax = maxf(cmax, float(x["cost"]))
+	var pw := float(o["power"])
+	var rows: Array = [
+		["Mass", float(o["mass"]) / mmax, "%d kg" % int(o["mass"]), Pix.DIM],
+		["Power", absf(pw) / pmax, "%+.1f kW" % pw, Pix.GOOD if pw >= 0.0 else Pix.WARN],
+		["Cost", float(o["cost"]) / cmax, "%d Data" % int(o["cost"]), Pix.ORANGE],
+	]
+	if o.has("isp"):
+		var imax := 1.0
+		for x in part["options"]:
+			imax = maxf(imax, float(x.get("isp", 0.0)))
+		rows.append(["Isp", float(o["isp"]) / imax, "%d s" % int(o["isp"]), Pix.EDGE])
+	if o.has("shield"):
+		rows.append(["Shield", float(o["shield"]), "%d%%" % int(float(o["shield"]) * 100.0), Pix.EDGE])
+	return rows
+
+func _process(_delta: float) -> void:
+	if card != null and card.visible:
+		var mp := get_viewport().get_mouse_position()
+		card.position = Vector2(clampf(mp.x + 18.0, 0.0, 960.0), clampf(mp.y + 18.0, 0.0, 480.0))
 
 func build_fuel() -> void:
 	fuel_label = Pix.lbl(ui, "", Vector2(20, 528), Vector2(600, 20), 14, Pix.WARN)

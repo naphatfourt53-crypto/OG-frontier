@@ -73,13 +73,17 @@ func refresh() -> void:
 	Pix.lbl(ui, "OG-FRONTIER  |  ISS OPERATIONS LOBBY", Vector2(24, 8), Vector2(700, 34), 26, Pix.EDGE)
 	Pix.lbl(ui, "DAY %03d   |   %s   |   ISS LOW EARTH ORBIT   |   EARTH: CRITICAL" % [GameState.day, GameState.date_text()],
 		Vector2(24, 42), Vector2(820, 20), 13, Pix.WARN)
-	Pix.lbl(ui, "Data %d   |   Food %.1f kg   |   Ore %d/%d pts   |   Smelter %.0f%%   |   Best score %d" % [
-		GameState.station_data, GameState.food_store, GameState.smelter_points(),
-		int(GameState.C.get("smelter_target", 165)), GameState.smelter_pct() * 100.0, GameState.best_score],
-		Vector2(24, 62), Vector2(900, 20), 13, Pix.TEXT)
+	Pix.chip(ui, Vector2(24, 62), "data", "Data %d" % GameState.station_data, Pix.EDGE)
+	Pix.chip(ui, Vector2(230, 62), "food", "Food %.1f kg" % GameState.food_store, Pix.GOOD)
+	var target := float(GameState.C.get("smelter_target", 165))
+	Pix.chip(ui, Vector2(430, 62), "ore", "Ore %d / %d pts" % [GameState.smelter_points(), int(target)],
+		Pix.WARN, clampf(float(GameState.smelter_points()) / target, 0.0, 1.0))
+	Pix.chip(ui, Vector2(660, 62), "smelter", "Smelter %.0f%%" % (GameState.smelter_pct() * 100.0),
+		Pix.ORANGE, GameState.smelter_pct())
+	Pix.lbl(ui, "Best score %d" % GameState.best_score, Vector2(900, 62), Vector2(200, 22), 14, Pix.DIM)
 	var guide_bg: Panel = Pix.panel(ui, Vector2(206, 612), Vector2(848, 36))
 	guide_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_glow(guide_bg, Pix.WARN)
+	Pix.glow(guide_bg, Pix.WARN)
 	Pix.lbl(ui, _next_step(), Vector2(218, 618), Vector2(700, 26), 14, Pix.WARN)
 	# [Go Now] warps straight to the room the guide is asking for.
 	var go_dest := _go_now_dest()
@@ -152,17 +156,7 @@ func _go_now_dest() -> String:
 		return "hangar" if total <= 0 else "mission"
 	return "hangar" if GameState.station_data < 20 else "mission"
 
-# A soft glow ring around an important panel.
-func _glow(p: Panel, col: Color) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Pix.PANEL
-	sb.set_border_width_all(2)
-	sb.border_color = col
-	sb.set_corner_radius_all(8)
-	sb.shadow_color = Color(col.r, col.g, col.b, 0.55)
-	sb.shadow_size = 14
-	sb.shadow_offset = Vector2.ZERO
-	p.add_theme_stylebox_override("panel", sb)
+
 
 func _room_body(m: Dictionary, built: bool) -> String:
 	if built:
