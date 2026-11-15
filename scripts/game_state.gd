@@ -602,13 +602,17 @@ func advance() -> Dictionary:
 				return {"kind": "end"}
 	return {"kind": "end"}
 
-func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0, eva_time: float = 0.0) -> void:
+func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0, eva_time: float = 0.0, sample_kg: float = 0.0, walks_log: Array = [], deploys: int = 0) -> void:
 	run["explore_pts"] = points
 	run["explore_counts"] = counts.duplicate()
 	run["stamina_btu"] = stamina_btu
 	run["eva_food_kcal"] = eva_food_kcal
 	run["eva_time"] = eva_time
 	run["data_raw"] += points
+	run["dry"] += sample_kg
+	run["sample_kg"] = sample_kg
+	run["walks_log"] = walks_log.duplicate()
+	run["deploys"] = deploys
 	for k in counts:
 		if ore.has(k):
 			ore[k] += int(counts[k])

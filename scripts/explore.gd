@@ -15,9 +15,21 @@ var res: Dictionary = {}
 var suit: Stamina
 var pace_wanted: String = "normal"
 var ui: Control
+var overlay: Control
 var hud_label: Label
 var count_label: Label
 var info: Label
+# T18 multi-walk state
+var walks_total: int = 3
+var walk_idx: int = 0
+var in_rest: bool = false
+var in_final: bool = false
+var walk_points: Array = []
+var _walk_start_pts: float = 0.0
+var total_elapsed: float = 0.0
+var total_btu: float = 0.0
+var _life_name: String = "Open-loop"
+var _time_mult: float = 1.0
 
 const GROUND_TOP := 104.0
 const SPEED := 240.0
@@ -31,11 +43,9 @@ func build() -> void:
 		scout = bool(GameState.run.get("scout", false))
 	else:
 		scout = bool(GameState.prep.get("scout", false))
-	var time_mult := float(GameState.C.get("prep", {}).get("scout_time_mult", 1.25)) if scout else 1.0
-	t_left = GameState.eva_seconds * time_mult
-	t_total = t_left
-	var life_name := String(GameState.opt("life").get("name", "Open-loop"))
-	suit = Stamina.create(life_name, GameState.has_module("exercise"))
+	_time_mult = float(GameState.C.get("prep", {}).get("scout_time_mult", 1.25)) if scout else 1.0
+	_life_name = String(GameState.opt("life").get("name", "Open-loop"))
+	walks_total = maxi(1, int(GameState.activities()["game"]["surface"].get("eva_count_default", 3)))
 	res = GameState.data["moon_resources"]
 	for k in res:
 		counts[k] = 0
@@ -52,6 +62,10 @@ func build() -> void:
 	ui.size = Vector2(1280, 720)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
+	overlay = Control.new()
+	overlay.size = Vector2(1280, 720)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
 	Pix.lbl(ui, "MOON WALK - sample the south pole", Vector2(20, 10), Vector2(700, 32), 24, Pix.EDGE)
 	Pix.lbl(ui, "WASD / arrows to move. 1 easy / 2 normal / 3 hard / Shift burst. SPACE returns to the lander.",
 		Vector2(20, 42), Vector2(900, 22), 14, Pix.DIM)
@@ -60,6 +74,81 @@ func build() -> void:
 	hud_label.mouse_filter = Control.MOUSE_FILTER_STOP  # so the tooltip can show
 	hud_label.tooltip_text = "Game model. Burn rates come from Apollo and ISS suit data; capacity tiers above Open-loop are game values."
 	info = Pix.lbl(ui, "", Vector2(760, 66), Vector2(500, 30), 14, Pix.DIM)
+	begin_walk()
+
+# ---------- T18 walk lifecycle ----------
+
+func begin_walk() -> void:
+	walk_idx += 1
+	in_rest = false
+	in_final = false
+	done = false
+	Pix.clear(overlay)
+	t_left = GameState.eva_seconds * _time_mult
+	t_total = t_left
+	_walk_start_pts = points
+	suit = Stamina.create(_life_name, GameState.has_module("exercise"), GameState.stamina_capacity_mult())
+
+func end_walk(reason: String) -> void:
+	if done:
+		return
+	done = true
+	var elapsed := clampf(t_total - maxf(0.0, t_left), 0.0, t_total)
+	total_elapsed += elapsed
+	total_btu += suit.capacity_btu - suit.energy_btu
+	walk_points.append(points - _walk_start_pts)
+	if walk_idx < walks_total:
+		_show_rest_panel(reason)
+	else:
+		_show_final_panel(reason)
+
+func _show_rest_panel(reason: String) -> void:
+	in_rest = true
+	Pix.clear(overlay)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	Pix.panel(overlay, Vector2(340, 160), Vector2(600, 380))
+	Pix.lbl(overlay, "WALK %d/%d COMPLETE" % [walk_idx, walks_total], Vector2(370, 176), Vector2(540, 36), 26, Pix.WARN)
+	Pix.lbl(overlay, reason, Vector2(370, 216), Vector2(540, 26), 15, Pix.DIM)
+	Pix.lbl(overlay, "This walk: %d science points. Running total: %d pts." % [int(walk_points.back()), int(points)],
+		Vector2(370, 248), Vector2(540, 30), 16, Pix.TEXT)
+	Pix.lbl(overlay, "Suit recharged during the rest. Collected samples stay on the surface.",
+		Vector2(370, 284), Vector2(540, 24), 14, Pix.DIM)
+	Pix.btn(overlay, "NEXT WALK %d/%d >" % [walk_idx + 1, walks_total], Vector2(370, 380), Vector2(280, 50), func():
+		begin_walk())
+
+func _show_final_panel(reason: String) -> void:
+	in_final = true
+	Pix.clear(overlay)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	Pix.panel(overlay, Vector2(340, 120), Vector2(600, 460))
+	Pix.lbl(overlay, "EVA OVER", Vector2(370, 136), Vector2(540, 36), 28, Pix.WARN)
+	Pix.lbl(overlay, reason, Vector2(370, 176), Vector2(540, 26), 15, Pix.DIM)
+	var food_kcal := Stamina.eva_food_kcal(total_elapsed)
+	Pix.lbl(overlay, "%d science points in %d s over %d walks. Suit energy used %d Btu (~%d kcal of extra food)." % [
+		int(points), int(total_elapsed), walks_total, int(total_btu), int(food_kcal)],
+		Vector2(370, 206), Vector2(540, 46), 16, Pix.TEXT)
+	var walks_txt := "Points by walk: "
+	for i in walk_points.size():
+		walks_txt += ("%d" % int(walk_points[i])) + ("  |  " if i < walk_points.size() - 1 else "")
+	Pix.lbl(overlay, walks_txt, Vector2(370, 258), Vector2(540, 22), 14, Pix.DIM)
+	var y := 288.0
+	for k in ["ice", "regolith", "ilmenite", "helium3"]:
+		Pix.lbl(overlay, "%s  x%d  = %d pts" % [String(res[k]["name"]), int(counts.get(k, 0)), int(counts.get(k, 0)) * int(res[k]["pts"])],
+			Vector2(370, y), Vector2(300, 22), 15, Pix.DIM)
+		y += 22.0
+	Pix.btn(overlay, "BACK TO SHIP >", Vector2(370, 448), Vector2(260, 50), func():
+		GameState.finish_explore(points, counts, total_btu, food_kcal, total_elapsed, 0.0, walk_points.duplicate(), 0)
+		go("flight"))
 
 func _spawn(rng: RandomNumberGenerator) -> void:
 	# Ice: inside craters.
@@ -134,17 +223,17 @@ func _process(delta: float) -> void:
 			Sfx.play("pickup")
 			info.text = "%s  +%d pts" % [String(res[it["type"]]["name"]), int(it["pts"])]
 	var reserve: bool = suit.in_reserve()
-	hud_label.text = "Time %02d   Stamina %d%%   %s%s" % [
-		int(maxf(0.0, t_left)), int(suit.fraction() * 100.0), String(applied).to_upper(),
+	hud_label.text = "WALK %d/%d  Time %02d  Stamina %d%%  %s%s" % [
+		walk_idx, walks_total, int(maxf(0.0, t_left)), int(suit.fraction() * 100.0), String(applied).to_upper(),
 		"  RESERVE" if reserve else ""]
 	hud_label.add_theme_color_override("font_color", Pix.BAD if reserve else Pix.WARN)
 	count_label.text = _counts_text()
 	if suit.is_empty():
-		finish("The suit ran out of energy. The crew had to stop.")
+		end_walk("The suit ran out of energy. The crew had to stop.")
 	elif t_left <= 0.0:
-		finish("The EVA clock ran out.")
+		end_walk("The EVA clock ran out.")
 	elif Input.is_key_pressed(KEY_SPACE):
-		finish("The crew returned to the lander early.")
+		end_walk("The crew returned to the lander early.")
 	queue_redraw()
 
 func _counts_text() -> String:
@@ -152,29 +241,6 @@ func _counts_text() -> String:
 	for k in ["ice", "regolith", "ilmenite", "helium3"]:
 		parts.append("%s %d" % [String(res[k]["name"]), int(counts.get(k, 0))])
 	return "  |  ".join(PackedStringArray(parts))
-
-func finish(reason: String = "The EVA clock ran out.") -> void:
-	if done:
-		return
-	done = true
-	var elapsed := clampf(t_total - maxf(0.0, t_left), 0.0, t_total)
-	var used_btu := suit.capacity_btu - suit.energy_btu
-	var food_kcal := Stamina.eva_food_kcal(elapsed)
-	Pix.panel(ui, Vector2(340, 180), Vector2(600, 360))
-	Pix.lbl(ui, "EVA OVER", Vector2(370, 196), Vector2(540, 36), 28, Pix.WARN)
-	Pix.lbl(ui, reason, Vector2(370, 236), Vector2(540, 26), 15, Pix.DIM)
-	Pix.lbl(ui, "%d science points in %d s. Suit energy used %d Btu (~%d kcal of extra food)." % [
-		int(points), int(elapsed), int(used_btu), int(food_kcal)],
-		Vector2(370, 266), Vector2(540, 46), 16, Pix.TEXT)
-	var y := 318.0
-	for k in ["ice", "regolith", "ilmenite", "helium3"]:
-		Pix.lbl(ui, "%s  x%d  = %d pts" % [String(res[k]["name"]), int(counts.get(k, 0)), int(counts.get(k, 0)) * int(res[k]["pts"])],
-			Vector2(370, y), Vector2(300, 22), 15, Pix.DIM)
-		y += 22.0
-	Pix.btn(ui, "BACK TO SHIP >", Vector2(370, 438), Vector2(260, 50), func():
-		GameState.finish_explore(points, counts, used_btu, food_kcal, t_total)
-		go("flight"))
-	queue_redraw()
 
 func draw_extra() -> void:
 	draw_rect(Rect2(0, GROUND_TOP, 1280, 720 - GROUND_TOP), Color("6e6e78"))

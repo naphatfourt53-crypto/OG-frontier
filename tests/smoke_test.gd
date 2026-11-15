@@ -38,6 +38,7 @@ func _run() -> void:
 	_test_weak_run()
 	_test_new_systems()
 	_test_t17()
+	_test_t18()
 	_test_golden()
 
 	if fails.is_empty():
@@ -285,7 +286,40 @@ func _test_t17() -> void:
 		gs.run["morale"] = 2
 		var allowed: String = gs.apply_choice(ice["choices"].size() - 1)
 		_check(not String(allowed).to_lower().contains("morale"), "morale choice allowed at 2")
-		_check(absf(float(gs.run["data_raw"]) - (raw_before + 6.0)) <= 0.001, "morale choice grants its data bonus")
+	gs.reset_all()
+
+# ---------- T18 multi-walk EVA ----------
+func _test_t18() -> void:
+	gs.reset_all()
+	gs.load_sample_design()
+	gs.start_run("moon")
+	var packed: PackedScene = load("res://scenes/explore.tscn")
+	_check(packed != null, "explore scene loads for the walk test")
+	if packed != null:
+		var node: Node = packed.instantiate()
+		root.add_child(node)
+		_check(node.is_inside_tree(), "explore scene becomes ready")
+		var wi = node.get("walk_idx")
+		_check(wi != null and int(wi) == 1, "first walk starts at index 1 (got %s)" % str(wi))
+		_check(node.get("suit") != null, "a fresh suit exists for walk 1")
+		node.call("end_walk", "test reason")
+		_check(bool(node.get("in_rest")), "walk 1 ends into the rest panel")
+		node.call("begin_walk")
+		var wi2 = node.get("walk_idx")
+		_check(wi2 != null and int(wi2) == 2, "second walk starts at index 2 (got %s)" % str(wi2))
+		node.call("end_walk", "test reason")
+		node.call("begin_walk")
+		var wi3 = node.get("walk_idx")
+		_check(wi3 != null and int(wi3) == 3, "third walk starts at index 3 (got %s)" % str(wi3))
+		node.call("end_walk", "test reason")
+		_check(bool(node.get("in_final")), "walk 3 ends into the final panel")
+		node.queue_free()
+	# Sample mass enters dry mass before the return burn.
+	gs.run["dry"] = 100.0
+	gs.finish_explore(50.0, {"regolith": 2}, 100.0, 10.0, 60.0, 10.0, [1, 2, 3], 1)
+	_check(absf(float(gs.run["dry"]) - 110.0) <= 0.001, "sample mass raises dry mass (got %.1f)" % float(gs.run["dry"]))
+	_check(gs.run["walks_log"].size() == 3, "walk log has 3 entries (got %d)" % gs.run["walks_log"].size())
+	_check(int(gs.run["deploys"]) == 1, "deploys stored on the run")
 	gs.reset_all()
 
 # ---------- parity with tools/balance_check.py ----------

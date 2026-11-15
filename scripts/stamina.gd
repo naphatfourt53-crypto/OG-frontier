@@ -27,9 +27,9 @@ static func capacity_for(life_option_name: String, has_exercise: bool) -> float:
 		cap *= 1.0 - float(c["no_exercise_capacity_penalty_pct"])
 	return cap
 
-static func create(life_option_name: String, has_exercise: bool) -> Stamina:
+static func create(life_option_name: String, has_exercise: bool, capacity_mult: float = 1.0) -> Stamina:
 	var s := Stamina.new()
-	s.capacity_btu = capacity_for(life_option_name, has_exercise)
+	s.capacity_btu = capacity_for(life_option_name, has_exercise) * clampf(capacity_mult, 0.1, 2.0)
 	s.energy_btu = s.capacity_btu
 	s.burst_left_s = float(cfg()["burst_max_s"])
 	return s
