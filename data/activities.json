@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "note": "Activities for the trip and the surface. real_basis = checked fact with source in the Data Book; game = invented for gameplay, never show to players as NASA data. Every number under 'game' can be tuned; every number under 'real_basis' cannot.",
+  "real_basis": {
+    "apollo11_coast_hours": 73.09,
+    "apollo11_nav_sighting_hours": [6, 24],
+    "apollo11_midcourse_hours": 26.5,
+    "apollo11_midcourse_dv_ft_s": 20.9,
+    "apollo11_ptc_roll_deg_s": 0.3,
+    "apollo11_surface_hours": 21.6,
+    "apollo11_sample_lb": 47,
+    "apollo17_surface_hours": 75,
+    "apollo17_eva_hours": [7.2, 7.617, 7.25],
+    "apollo17_eva_total_hours": 22.067,
+    "apollo17_rover_km": 30.5,
+    "apollo17_sample_kg": 110.4,
+    "iss_exercise_hours_per_day": 2,
+    "iss_bone_loss_pct_per_month": 1,
+    "ltv_speed_km_h": 10,
+    "ltv_range_km": 200,
+    "mars_comm_delay_min_ground_slide": 19
+  },
+  "game": {
+    "transit": {
+      "nav_sighting": { "trigger_fraction_of_trip": [0.082, 0.328], "window_s": 6.0, "effect": "extra_dv_error_m_s_reduced_by_accuracy", "max_extra_dv_error_m_s": 6.0 },
+      "midcourse_correction": { "trigger_fraction_of_trip": 0.363, "nominal_dv_m_s": 6.37, "burn_hold_s": 3.0 },
+      "thermal_roll": { "default_on": true, "skip_hull_damage_pct_per_day": 2.0 },
+      "crew_schedule": { "exercise_hours_options": [0, 1, 2], "no_exercise_stamina_capacity_penalty_pct": 10, "morale_gain_per_plant_crop": 1 },
+      "delayed_comms_event": { "enabled_for": ["mars"], "decision_time_s": 15.0 }
+    },
+    "surface": {
+      "eva_count_default": 3,
+      "eva_window_s": 75,
+      "tasks": {
+        "prep":     { "stamina_btu": 0,   "time_s": 4,  "effect": "choose_tools_before_eva" },
+        "document": { "time_s": 2, "points_multiplier": 1.5 },
+        "core":     { "time_s": 5, "points_multiplier": 2.0, "pace_forced": "hard" },
+        "deploy":   { "time_s": 4, "points_per_later_eva": 3 }
+      },
+      "rover": { "key": "R", "speed_multiplier": 2.0, "battery_s": 45, "blocked_in_craters": true },
+      "sample_return_mass_penalty": true
+    }
+  },
+  "tags": {
+    "real_basis": "real",
+    "game": "game"
+  }
+}

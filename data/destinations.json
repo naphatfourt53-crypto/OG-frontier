@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "note": "Real environment numbers per destination, checked 15 Nov 2026 against pages listed in the Data Book (section: mission per destination). null = not opened in research; do not fill from memory. Tags: real, calc, game.",
+  "moon": {
+    "gravity_m_s2": 1.62, "synodic_month_days": 29.53, "night_days": 14.77,
+    "surface_pressure_bar": 3e-15, "temp_k_min": 95, "temp_k_max": 390,
+    "escape_km_s": 2.38, "distance_mean_km": 384400, "light_time_s": null,
+    "radiation_msv_per_day": null, "surface_stay_days_artemis3_max": 6.5, "moonwalks_artemis3_goal": 4
+  },
+  "mars": {
+    "gravity_m_s2": 3.73, "day_hours": 24.6597, "surface_pressure_mb": 6.36,
+    "temp_k_mean": 214, "temp_k_diurnal_min_viking1": 184, "temp_k_diurnal_max_viking1": 242,
+    "co2_pct": 95.1, "escape_km_s": 5.03, "light_time_min_min": 3.0, "light_time_min_max": 22.4,
+    "radiation_surface_msv_per_day": 0.67, "radiation_cruise_msv_per_day": 1.8,
+    "dra5_crew": 6, "dra5_surface_days": 500, "dra5_rovers": 2, "dra5_rover_crew": 2,
+    "relay_percent_of_data": { "exomars_tgo": 69.9, "mro": 26.7, "odyssey": 3.4 },
+    "moxie_g_per_h": 6, "moxie_design_max_g_per_h": 10, "o2_for_4_crew_return_kg": 25000
+  },
+  "venus": {
+    "surface_temp_c_nasa_science": 467, "surface_temp_c_ntrs": 465,
+    "pressure_x_earth_sea_level": 93, "pressure_atm_ntrs": 90, "rotation_earth_days": 243,
+    "sunrise_to_sunset_earth_days": 117, "distance_au": 0.72,
+    "lander_survival_min_minutes": 23, "lander_survival_max_hours": 2,
+    "gravity_m_s2": null
+  },
+  "mercury": {
+    "temp_c_day_max": 430, "temp_c_night_min": -170, "gravity_m_s2": null,
+    "bepicolombo_orbit_insertion": "2026-11-21", "bepicolombo_science_start": "2027-04"
+  },
+  "europa": {
+    "orbit_distance_from_jupiter_km": 671000, "clipper_mass_kg": 5800, "clipper_instruments": 9,
+    "clipper_jupiter_orbit_insertion": "2030-04", "clipper_flybys_begin": "2031-early"
+  },
+  "titan": {
+    "temp_c": -180, "pressure_x_earth": 1.5, "dragonfly_mass_kg": 875,
+    "dragonfly_launch": "2028-07", "dragonfly_arrival": "2034", "dragonfly_nominal_years": 3
+  },
+  "tags": {
+    "moon.gravity_m_s2": "real", "moon.synodic_month_days": "real", "moon.night_days": "calc",
+    "moon.surface_pressure_bar": "real", "moon.temp_k_min": "real", "moon.temp_k_max": "real",
+    "moon.escape_km_s": "real", "moon.distance_mean_km": "real", "moon.light_time_s": "real",
+    "moon.radiation_msv_per_day": "real", "moon.surface_stay_days_artemis3_max": "real",
+    "moon.moonwalks_artemis3_goal": "real",
+    "mars": "real", "venus": "real", "mercury": "real", "europa": "real", "titan": "real"
+  }
+}
