@@ -245,7 +245,7 @@ ogfrontier/
 ## 10) Git — ทำงานเป็นทีม
 
 Repo นี้ทำงานบน branch `main` (งานล่าสุด) และ push ขึ้น
-`https://github.com/naphatfourt53-crypto/OG-Frontier.git` แบบปกติ (ไม่ force push)
+`https://github.com/naphatfourt53-crypto/OG-frontier.git` แบบปกติ (ไม่ force push)
 
 ```bash
 # ก่อนเริ่มงาน
