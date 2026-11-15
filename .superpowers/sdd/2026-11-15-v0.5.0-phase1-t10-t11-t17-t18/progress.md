@@ -29,3 +29,22 @@ Task 7: complete (commits 75672d3..bedddf7, tests: smoke -> PASS 191 checks, scr
 Task 8: complete (commits bedddf7..f3c052e, tests: smoke PASS 191, mirror PASS 18, check_physics ALL PASS, balance exit 0 incl. T17 worst-case line)
   Ruling: the Godot editor rewrote project.godot during a windowed run and dropped the explicit `renderer/rendering_method` desktop+web lines - defaults are identical (forward_plus / gl_compatibility for web), so this is benign; verified via the property list earlier.
 Final review: review range 2254a4a..f3c052e (merge base 2254a4a), dispatch fresh reviewer.
+Final review: received (no Critical). Fix pass committed as 22b2c64.
+Final: fixed burn soft-lock — smoke "burn auto-resolves when the player never presses" + "skipped burn leaves the full nominal penalty" RED->GREEN, suite 199/199, screenshots 23 OK.
+Final: fixed hardcoded multipliers — stamina penalty now reads no_exercise_stamina_capacity_penalty_pct (pinned by "capacity penalty reads activities.json"); document/core multipliers via _doc_multiplier/_core_multiplier helpers wired to activities.json (pinned by wiring checks) RED->GREEN, suite green.
+Final: fixed hold-not-holding (re-graded Minor->Important: spec says "hold to drill"; a tap committed 5 s of forced hard pace) — "hold cancels when the key is not down" + "cancelled hold grants no points" RED->GREEN; key-release latch stops chained holds.
+Final: Ruling: overshoot negative penalty (reviewer minor 3) - deferred, not fixed; overshoot clamps at 1.2 in resolve_burn and the auto-finish fires at exactly hold_s in practice. Cost if wrong: ~0.04 m/s discount on one leg.
+Final: Ruling: Mars delayed-comms dormant (declined item 1) - stands; mechanism ships dormant until phase 3 adds Mars data. Cost if wrong: none.
+Final: Ruling: roll-skip scaling on long coasts (declined item 2) - stands for now; 2%/day on a 972 d Mars trip would zero hull silently. Phase 3 Mars mission must clamp hull to a floor + _fail at 0. Cost if wrong: a phase-3 bug.
+Final: Ruling: "Coast to the Moon" labels hardcoded (declined item 3) - stands; cosmetic until Mars lands. Cost: label text only.
+Final: Ruling: destinations.json imported verbatim (declined item 4) - stands; team data, not code.
+Final: Ruling: eva_window_s 75 vs settings 60 (declined item 5) - stands; team-ruled, logged in OVERNIGHT_LOG.
+Final: Ruling: run length vs 5-min anti-goal (declined item 6) - stands; team approved 60s x 3 in spec section 7.
+Final: Ruling: core bonus is 10 pts (2.0 x regolith 5 pts), not the plan's 20 - data is the authority; plan example used wrong regolith value. Cost if wrong: none (formula follows game_data.json).
+Final: minor (deferred): jettison keeps x1.5 for documented samples (points refunded at base value).
+Final: minor (deferred): deploy bonus points appear in no walk's breakdown (added before _walk_start_pts).
+Final: minor (deferred): "Samples returned: 0 kg (N pieces)" cosmetic contradiction when sample_kg defaults.
+Final: minor (deferred): resolve_nav index semantics test-fragile (pending_nav overwritten by repeated direct calls).
+Final: minor (deferred): stringly-typed roll-damage trigger on the consume label.
+Final: Ruling: no branch to merge (project convention = direct main pushes); finishing-a-development-branch skipped; phase 1 is live on main at 22b2c64.
+Final review: clean after fix pass - no Critical/Important outstanding.
