@@ -9,6 +9,7 @@ func build() -> void:
 		return
 	var ok: bool = r["success"]
 	var a: Dictionary = r["a"]
+	Sfx.play("success" if ok else "fail")
 	Pix.lbl(self, "MISSION REPORT", Vector2(20, 12), Vector2(500, 34), 26, Pix.EDGE)
 	Pix.lbl(self, "MISSION COMPLETE" if ok else "GAME OVER: " + String(r["reason"]).to_upper(), Vector2(20, 52), Vector2(900, 50), 38, Pix.GOOD if ok else Pix.BAD)
 	var why := ""
@@ -43,18 +44,44 @@ func build() -> void:
 		Pix.lbl(self, "%s %s: need %.1f t, had %.1f t" % ["OK " if good else "FAIL", l["name"], l["need_t"], l["have_t"]], Vector2(654, y), Vector2(590, 24), 15, Pix.GOOD if good else Pix.BAD)
 		y += 28.0
 	Pix.lbl(self, "Delta-v: %.2f km/s available, %.2f needed.\nm_prop = m_f (e^(dv / (Isp*g0)) - 1)" % [a["dv"], a["dv_need"]], Vector2(654, y + 8), Vector2(590, 60), 14, Pix.DIM)
+	# moon samples collected during the EVA
+	Pix.lbl(self, _samples_text(r), Vector2(20, 506), Vector2(1240, 44), 15, Pix.TEXT)
 	# decisions + score
 	var dec := "Decisions: " + ("none" if r["decisions"].is_empty() else "; ".join(PackedStringArray(r["decisions"])))
-	Pix.lbl(self, dec, Vector2(20, 510), Vector2(1240, 50), 14, Pix.DIM)
+	Pix.lbl(self, dec, Vector2(20, 550), Vector2(1240, 40), 13, Pix.DIM)
 	var prev := ""
 	if GameState.history.size() >= 2:
 		var p: Dictionary = GameState.history[GameState.history.size() - 2]
 		prev = "   |   Previous run: %d" % int(p["score"])
-	Pix.lbl(self, "SCORE %d   |   Best %d%s   |   Seed %d" % [int(r["score"]), GameState.best_score, prev, GameState.seed_value], Vector2(20, 565), Vector2(1240, 30), 20, Pix.WARN)
+	Pix.lbl(self, "SCORE %d   |   Best %d%s   |   Seed %d" % [int(r["score"]), GameState.best_score, prev, GameState.seed_value], Vector2(20, 586), Vector2(1240, 30), 20, Pix.WARN)
 	if ok:
-		Pix.lbl(self, "DEMO COMPLETE - Mars unlocked! Use your new Data to grow the station.", Vector2(20, 600), Vector2(1240, 30), 18, Pix.GOOD)
+		Pix.lbl(self, "DEMO COMPLETE - Mars unlocked! Use your new Data to grow the station.", Vector2(20, 616), Vector2(1240, 30), 18, Pix.GOOD)
 	Pix.btn(self, "Modify ship & rerun (same seed)", Vector2(20, 650), Vector2(360, 48), func(): go("hangar"))
 	Pix.btn(self, "New seed, change ship", Vector2(390, 650), Vector2(280, 48), func():
 		GameState.new_seed()
 		go("hangar"))
 	Pix.btn(self, "Back to station", Vector2(990, 650), Vector2(270, 48), func(): go("station"))
+	var ok_photo: bool = bool(GameState.last_report["success"])
+	Pix.lbl(self, "Apollo 11 on the Moon - NASA (public domain)" if ok_photo else "Apollo 11 EVA - NASA (public domain)",
+		Vector2(1000, 166), Vector2(262, 18), 11, Color(0.55, 0.62, 0.78))
+
+func draw_extra() -> void:
+	if GameState.last_report.is_empty():
+		return
+	var path := Pix.NASA_LANDER if bool(GameState.last_report["success"]) else Pix.NASA_ASTRONAUT
+	Pix.photo_frame(self, path, Rect2(1000, 8, 260, 150), 0.15)
+
+func back_scene() -> String:
+	return "station"
+
+func _samples_text(r: Dictionary) -> String:
+	var counts: Dictionary = r.get("explore_counts", {})
+	var res: Dictionary = GameState.data["moon_resources"]
+	var parts: Array = []
+	var total := 0
+	for k in ["ice", "regolith", "ilmenite", "helium3"]:
+		var n := int(counts.get(k, 0))
+		var pts := n * int(res[k]["pts"])
+		total += pts
+		parts.append("%s x%d = %d" % [res[k]["name"], n, pts])
+	return "MOON SAMPLES (%d s EVA):  %s  |  total %d pts" % [int(GameState.eva_seconds), "  |  ".join(PackedStringArray(parts)), total]

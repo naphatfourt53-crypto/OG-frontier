@@ -1,114 +1,258 @@
-# Last Launch / OG-Frontier — Prototype (Godot 4)
+# Last Launch / OG-Frontier — Prototype (Godot 4.7.2)
 
-เกมตัวอย่างสำหรับ NASA Space Apps 2026 หัวข้อ **Space Mission Design Game**
-เปิดแล้วกด **F5** เล่นได้ครบวงจร:
-สถานีแม่แบบกิ่งก้าน → ประกอบยาน 7 ชิ้น → เลือกภารกิจ → บิน (มีเหตุการณ์สุ่มให้ตัดสินใจ) → เดินสำรวจดวงจันทร์ 60 วินาที → รายงานผลที่อธิบายว่า "ทำไมสำเร็จ/ล้มเหลว"
+เกมสำหรับ NASA Space Apps 2026 หัวข้อ **Space Mission Design Game**
+เล่นครบวงจรในรอบเดียว: สถานีอวกาศ → ประกอบยาน 7 ชิ้น → เลือกภารกิจ →
+บินผ่านเหตุการณ์สุ่ม → เดินสำรวจดวงจันทร์ → รายงานผลที่บอกว่า "ทำไมสำเร็จ/ล้มเหลว"
 
-> **ข้อควรรู้ (ตรงไปตรงมา):** ผมเขียนโค้ดนี้ในเครื่องที่ไม่มี Godot จึง **ยังไม่ได้รันเกมจริง** ตรวจได้แค่ไวยากรณ์เบื้องต้น และตรวจสมดุลตัวเลขด้วย Python (`tools/balance_check.py`) ครั้งแรกที่เปิดอาจมี error เล็กน้อย — ดูหัวข้อ "ถ้าเจอ Error" แล้วส่งข้อความ error มาให้ผม ผมแก้ให้ได้ทันที
+สถานะปัจจุบัน: **รันได้จริงและผ่านการตรวจแล้ว** (headless test + screenshot ทุกหน้าจอ)
+รายละเอียดงานค้าง/คำถามที่ยังไม่ได้ข้อสรุปอยู่ใน [`OVERNIGHT_LOG.md`](OVERNIGHT_LOG.md)
 
 ---
 
-## 1) ติดตั้งและเปิดเกม (ทำตามทีละข้อ)
+## 1) สิ่งที่ต้องมี
 
-1. ดาวน์โหลด **Godot 4.3 ขึ้นไป** (รุ่น *Standard* ไม่ใช่ .NET) จาก https://godotengine.org/download
-   - ไม่ต้องติดตั้ง แตก zip แล้วดับเบิลคลิกไฟล์ Godot ได้เลย
-2. แตกไฟล์ `ogfrontier.zip` ไว้ในโฟลเดอร์ที่ชื่อไม่มีภาษาไทย (เช่น `C:\dev\ogfrontier`)
-3. เปิด Godot → กด **Import** → เลือกไฟล์ `project.godot` → **Import & Edit**
-4. รอ Godot สแกนไฟล์ครั้งแรก (ไม่กี่วินาที) แล้วกด **F5** (หรือปุ่มสามเหลี่ยม ▶ มุมขวาบน)
-5. ถ้าถามเลือก main scene ให้เลือก `scenes/menu.tscn` (ตั้งไว้ให้แล้วในโปรเจกต์)
+| สิ่งที่ต้องมี | เวอร์ชัน |
+| --- | --- |
+| Godot Engine (รุ่น Standard ไม่ใช่ .NET) | **4.7.2** |
+| Python (เฉพาะตอนรัน balance check) | 3.10+ |
+| ระบบปฏิบัติการ | Windows / macOS / Linux |
 
-## 2) วิธีเล่น (ลอง 5 นาทีแรก)
+โปรเจกต์ไม่มี addon, ไม่มีปลั๊กอิน, ไม่มี C#, ไม่มีไลบรารีภายนอก
+รูปถ่าย NASA 4 รูปถูก import ไว้แล้ว (ดู [`assets/CREDITS.md`](assets/CREDITS.md))
 
-1. เมนู → **START** → เห็นสถานีแม่เป็นกิ่งก้าน (Core ตรงกลาง, Habitat/Hangar/Mission Ctrl แตกออก, ช่องสีม่วง `+` คือโมดูลที่ต่อเพิ่มได้ด้วย Data)
-2. คลิก **Hangar** → กด **Load sample design** (ยานตัวอย่างที่ผ่านได้) หรือเลือกชิ้นส่วนเอง 7 ชิ้น + เลื่อนแถบ Propellant
-   - ตัวเลขฝั่งขวาเป็นสีเขียว=ผ่าน แดง=ไม่ผ่าน (มวล, งบ, ไฟฟ้า, Δv, เสบียง)
-3. กด **Mission Control >** → ดูแผนการบิน → **LAUNCH**
-4. หน้า Flight: กด **CONTINUE** ไปเรื่อยๆ เจอเหตุการณ์ให้เลือก 1 ใน 2 (ทุกทางมีผลดีผลเสีย)
-5. ลงจอดแล้วจะเข้า **Moon Walk 60 วินาที** — WASD/ลูกศรเดิน เก็บตัวอย่างสีเหลือง (5 แต้ม) และน้ำแข็งสีฟ้าในหลุมมืด (15 แต้ม แต่เดินช้าลง) กด Space เพื่อกลับก่อนเวลา
-6. หน้า **Report** บอกเหตุผลทำไมผ่าน/ไม่ผ่าน + ตาราง 6 ทรัพยากรของโจทย์ (Mass, Power, Budget, Data, Comms, Time) → กด **Modify ship & rerun (same seed)** เพื่อแก้ยานแล้วลองใหม่ด้วยเหตุการณ์ชุดเดิม (เทียบผลได้ยุติธรรม)
-7. ผ่านภารกิจแรกแล้ว **ปลดล็อกดาวอังคาร** = จบ DEMO; เอา Data ไปต่อโมดูลสถานีเพิ่ม (Greenhouse, Lab, Cargo Bay, Heavy Dock, Relay Array, Solar Wing)
+## 2) เปิดเกม
 
-## 3) ไฟล์ไหนทำอะไร
+1. เปิด Godot 4.7.2 → **Import** → เลือก `project.godot` → **Import & Edit**
+2. รอ import ครั้งแรกสักครู่ (จะสร้างโฟลเดอร์ `.godot/` ซึ่งไม่ถูก commit)
+3. กด **F5** หรือปุ่ม ▶ มุมขวาบน เกมเริ่มที่ `scenes/menu.tscn`
 
-| ไฟล์ | หน้าที่ |
-|---|---|
-| `data/game_data.json` | **ตัวเลขทั้งหมดของเกม** (ชิ้นส่วน, ภารกิจ, เหตุการณ์, โมดูลสถานี) แก้ได้โดยไม่ต้องแตะโค้ด |
-| `scripts/game_state.gd` | สมองของเกม (autoload ชื่อ `GameState`): สมการจรวด, เสบียง, ไฟฟ้า, Game Over 5 แบบ, คะแนน, เซฟ |
-| `scripts/pix.gd` | ตัววาดพิกเซลอาร์ต (ยาน ดาว) และสร้างปุ่ม/ข้อความ ไม่ใช้รูปภายนอก = ไม่มีปัญหาลิขสิทธิ์ |
-| `scripts/screen.gd` | คลาสแม่ของทุกหน้าจอ |
-| `scripts/menu.gd` `station.gd` `hangar.gd` `mission.gd` `flight.gd` `explore.gd` `report.gd` | 7 หน้าจอ ตามลำดับการเล่น |
-| `scenes/*.tscn` | ไฟล์ฉากของแต่ละหน้า (แต่ละอันมีแค่ Control + สคริปต์) |
-| `tools/balance_check.py` | จำลองเกมด้วย Python เพื่อเช็กสมดุล (ไม่ต้องใช้ Godot) |
+> ถ้าเปิดด้วย Godot 4.3–4.6 จะมี warning เรื่อง `config/features="4.7"`
+> แนะนำให้ใช้ 4.7.2 ตามที่ทีม pin ไว้
 
-การเชื่อมหน้าจอ: `menu → station → (hangar | mission) → flight ⇄ explore → report → (hangar | station)`
-ทุกหน้าเปลี่ยนด้วย `go("ชื่อฉาก")`
+## 3) วิธีเล่น (5 นาทีแรก)
 
-## 4) ฟิสิกส์จริงที่ใช้ (จาก Game Data Book)
+1. **เมนู → START** เข้าสถานีอวกาศ โมดูลสีม่วง `+` คือส่วนที่ต่อเพิ่มได้ด้วย Data
+2. **Hangar** → กด **Load sample design** (ยานที่บินผ่านได้) หรือเลือกเองทั้ง 7 ชิ้น
+   พร้อมเลื่อนแถบ Propellant — ตัวเลขสีเขียว = ผ่าน, สีแดง = ไม่ผ่าน
+   ปุ่มที่มี `*` คือตัวเลือกที่แนะนำใน sample design
+3. **Mission Control >** อ่านแผนการบิน (มี note แบบกระบวนงานจริงของ Apollo) → **LAUNCH**
+4. **Flight** กด **CONTINUE** ไปเรื่อยๆ เจอเหตุการณ์ให้เลือก 1 ใน 2
+   ทุกทางมีผลดี–ผลเสีย และข้อความใน log คือร่องรอยว่าอะไรทำให้ภารกิจพัง
+5. **Moon Walk** (ค่าเริ่มต้น 60 วินาที, ปรับได้ 30–300 วินาทีใน Settings)
+   WASD/ลูกศรเดิน, Space กลับยานก่อนเวลา เก็บตัวอย่าง 4 ชนิด:
 
-- สมการจรวด: `m_prop = m_f · (e^(Δv/(Isp·g0)) − 1)`, g0 = 9.80665
-- Δv แต่ละช่วง: LEO→TLI 3.2 / TLI→วงโคจรดวงจันทร์ 0.9 / ลงจอด 1.87 / ขึ้น+กลับ LEO 2.74 km/s (บวก margin 10%)
-- ลูกเรือ 1 คน/วัน: O₂ 0.89 kg, น้ำดื่ม 2.79 kg, อาหาร 2.39 kg
-- Isp: hypergolic ≈310, methalox ≈360, hydrolox ≈450 วินาที
-- น้ำแข็งที่ขั้วใต้ดวงจันทร์ (LCROSS ≈ 5.6 ± 2.9% โดยมวล)
-- **ค่าที่ปรับเองเพื่อให้เล่นสนุก (ไม่ใช่ฮาร์ดแวร์จริง)** ระบุด้วยคำว่า GAME ใน json เช่น ECLSS Advanced, งบ, มวลชิ้นส่วน, คะแนน
-- ตัวง่ายที่ตั้งใจ: ใช้ยานเดียวไม่ทิ้งถัง (จริงใช้หลายท่อน) และให้บูสเตอร์ของสถานีทำ LEO→TLI ให้ — เขียนบอกผู้เล่นในหน้า Mission Control แล้ว
+   | ตัวอย่าง | แต้ม/ชิ้น | จำนวนสูงสุด | อยู่ที่ไหน |
+   | --- | --- | --- | --- |
+   | Regolith | 5 | 10 | ทั่วพื้น |
+   | Ilmenite | 10 | 3 | ใกล้หิน outcrop |
+   | Ice | 15 | 4 | ในหลุมมืด (เดินช้าลง) |
+   | Helium-3 | 25 | 1 | ใจกลางหลุมมืด |
 
-## 5) แก้เกมโดยไม่ต้องเขียนโค้ด
+   คะแนนเต็มของ EVA = 165 แต้ม (เก็บครบทุกชิ้น)
+6. **Report** บอกเหตุผลที่ผ่าน/ไม่ผ่าน + ตาราง 6 ทรัพยากร (Mass, Power, Budget,
+   Data, Comms, Time) + สรุปตัวอย่างที่เก็บได้
+   กด **Modify ship & rerun (same seed)** เพื่อแก้ยานแล้วลองใหม่ด้วยเหตุการณ์ชุดเดิม
+7. ผ่านภารกิจแรกแล้ว **ปลดล็อกดาวอังคาร** = จบ DEMO
+   เอา Data ไปต่อโมดูล: Greenhouse, Science Lab, Cargo Bay, Heavy Dock, Relay Array, Solar Wing
 
-เปิด `data/game_data.json` ด้วย VS Code/Notepad แล้วแก้ แล้วกด F5 ใหม่
+### ปุ่มลัด
 
-- เปลี่ยนงบ: `"budget": 340.0` → ตัวเลขอื่น
-- เพิ่มตัวเลือกชิ้นส่วน: คัดลอกบล็อกใน `"options"` ของชิ้นนั้น (ต้องมี `name, mass, power, cost, info` และฟิลด์เฉพาะ เช่น `isp`)
-- เพิ่มเหตุการณ์: คัดลอกบล็อกใน `"events"` แล้วแก้ `slot` (`space` หรือ `surface`) และ `fx`
-  - `fx` ที่ใช้ได้: `days, supply_pct, water_kg, prop_pct, hull, rad_hull, power_mult, data_mult, data`
-- เพิ่มโมดูลสถานี: คัดลอกบล็อกใน `"station_modules"` กำหนด `parent`, ตำแหน่ง `x,y`, `cost` (Data) และ `bonus`
-- ตรวจสมดุลหลังแก้: `python3 tools/balance_check.py`
+| ปุ่ม | ใช้ทำอะไร |
+| --- | --- |
+| เมาส์ | เมนู, เลือกชิ้นส่วน, ตอบเหตุการณ์ |
+| WASD / ลูกศร | เดินบนดวงจันทร์ |
+| Space | กลับยานก่อนหมดเวลา EVA |
+| Enter | ไปต่อในหน้า Flight |
+| Esc | ย้อนกลับ (สถานี, Hangar, Mission, Report) |
+| `?` (มุมขวาบนของสถานี) | เปิด tutorial ซ้ำ |
+| SETTINGS (เมนู) | ปรับเวลา EVA, เปิด/ปิดเสียง, replay tutorial |
 
-ผลตรวจปัจจุบัน: ยานตัวอย่างชนะ 100% ถ้าเลือกดี และ ~81% ถ้าสุ่มเลือก; ยานแย่ล้มเหลวด้วยเหตุผลที่ตั้งใจ (เชื้อเพลิงน้อย→Stranded, ล็อกเกอร์เล็ก→Starvation, ไฟไม่พอ→Power Failure); ประมาณ 24% ของแบบยานที่ปล่อยได้ผ่านภารกิจได้
+## 4) ตัวเลขทั้งหมดอยู่ที่เดียว
 
-## 6) Git — ทำงานเป็นทีม (คำสั่งตามลำดับ)
+ตัวเลขสมดุลเกมทั้งหมดอยู่ใน [`data/game_data.json`](data/game_data.json):
+ชิ้นส่วนยาน, ภารกิจ, เหตุการณ์, โมดูลสถานี, ทรัพยากรบนดวงจันทร์
+แก้แล้วกด F5 ใหม่ ไม่ต้องแตะโค้ด
+
+- เพิ่มตัวเลือกชิ้นส่วน: คัดลอกบล็อกใน `"options"` (ต้องมี `name, mass, power, cost, info`)
+- เพิ่มเหตุการณ์: คัดลอกบล็อกใน `"events"`, ตั้ง `slot` เป็น `space` หรือ `surface`
+  และใช้ `fx` ที่รองรับ: `days, supply_pct, water_kg, prop_pct, hull, rad_hull, power_mult, data_mult, data`
+- เพิ่มโมดูลสถานี: คัดลอกบล็อกใน `"station_modules"` กำหนด `parent`, `x`, `y`, `cost`, `bonus`
+- เพิ่มทรัพยากรบนดวงจันทร์: แก้ `"moon_resources"` (`pts`, `count`, `slow`)
+  แล้วแก้ `scripts/explore.gd` เฉพาะกรณีที่อยากให้เกิดในตำแหน่งใหม่
+
+**กฎของทีม:** ถ้าแก้สูตร/คะแนน ต้องแก้ `tools/balance_check.py` ให้ตรงกันด้วย
+แล้วรัน `--emit-golden` เพื่ออัปเดต `tests/golden.json` (ดูหัวข้อถัดไป)
+
+## 5) ตรวจสอบก่อน commit (สำคัญ)
+
+### 5.1 Headless smoke test
+
+```powershell
+# Windows (แก้ path ให้ชี้ไฟล์ Godot ของเครื่องคุณ)
+& "C:\path\to\Godot_v4.7.2-stable_win64_console.exe" --headless --path . -s tests/smoke_test.gd
+```
 
 ```bash
-# ทำครั้งเดียวโดยหัวหน้าทีม
-cd ogfrontier
-git init
-git add .
-git commit -m "Initial prototype"
-git branch -M main
-git remote add origin https://github.com/<ทีมคุณ>/<ชื่อrepo>.git
-git push -u origin main
+# macOS / Linux
+godot --headless --path . -s tests/smoke_test.gd
+```
 
-# เพื่อนร่วมทีม
-git clone https://github.com/<ทีมคุณ>/<ชื่อrepo>.git
+ผลที่ต้องเห็น:
 
-# ก่อนเริ่มงานทุกครั้ง
+```text
+  sample run: success=false score=86 data=43
+  smart run: success=true score=1117 data=48
+  weak run: reason=Stranded
+  parity checked 5 design(s)
+PASS smoke_test (121 checks)
+```
+
+เทสต์นี้ตรวจ: เปิดได้ทุกฉาก, สูตรจรวด/เสบียง/ไฟฟ้า, Game Over 5 แบบ,
+คะแนน, save/load (รวม save เวอร์ชันเก่า), และตัวเลข GDScript ตรงกับ Python ภายใน 1%
+และ **ไม่แตะเซฟของผู้เล่น** (`GameState.skip_save = true`)
+
+### 5.2 Python balance check
+```powershell
+"C:\Program Files\Python313\python.exe" tools\balance_check.py
+```
+
+```bash
+python3 tools/balance_check.py
+```
+
+ใช้เทียบสมดุลโดยไม่ต้องเปิด Godot (พิมพ์ต้นทุน EVA pool, อัตราชนะของยานตัวอย่าง,
+และสำรวจ design space 2,187 แบบ)
+
+ถ้าแก้สูตรใน `game_state.gd` ให้รัน `--emit-golden` แล้ว commit `tests/golden.json`:
+
+```bash
+python3 tools/balance_check.py --emit-golden
+```
+
+### 5.3 Screenshot ทุกหน้าจอ
+
+ต้องรันแบบมีหน้าต่างจริง (headless ไม่มี framebuffer):
+
+```powershell
+& "C:\path\to\Godot_v4.7.2-stable_win64_console.exe" --path . -s tools/screenshots.gd --resolution 1280x720
+```
+
+ไฟล์จะออกที่ `tests/out/01_menu.png` … `11_tutorial.png` (โฟลเดอร์นี้ไม่ถูก commit)
+ใช้ตรวจ layout หลังแก้ UI ทุกครั้ง — โดยเฉพาะข้อความยาวๆ ที่อาจล้นกรอบ
+
+### 5.4 ตรวจเสียง
+
+ต้องรันแบบมีอุปกรณ์เสียง (อย่าใส่ `--headless`):
+
+```powershell
+& "C:\path\to\Godot_v4.7.2-stable_win64_console.exe" --path . -s tools/audio_check.gd
+```
+
+ผลที่ต้องเห็น: `AUDIO OK (7 sounds)` พร้อมความยาวของแต่ละไฟล์
+(ใช้เช็กว่า audio bus ทำงานและไฟล์ `.wav` import ครบ)
+
+## 6) Export (เว็บ / Windows)
+
+มี `export_presets.cfg` เตรียมไว้แล้ว 2 preset: **Web** และ **Windows Desktop**
+ปลายทางอยู่ที่ `builds/web/` และ `builds/windows/` (ถูก ignore)
+เครื่องที่ทำ repo นี้ติดตั้ง export templates 4.7.2 แล้ว และ **build ผ่านทั้งสอง preset**
+
+1. ถ้าเครื่องใหม่ยังไม่มี template: Godot → **Editor → Manage Export Templates → Download and Install**
+2. **Project → Export…** → เลือก preset → **Export Project**
+   (หรือใช้ command line ตามหัวข้อ 8 ใน `OVERNIGHT_LOG.md`)
+3. Web: ต้องเสิร์ฟผ่าน HTTP(S) เท่านั้น เปิดไฟล์ `.html` ด้วยการดับเบิลคลิกจะไม่ทำงาน
+   (`file://` ถูกบล็อก) — อัปโหลดขึ้น itch.io ช่อง "HTML5" หรือรันเซิร์ฟเวอร์ในโฟลเดอร์นั้น
+4. Web preset ตั้ง `thread_support=false` ไว้ เพื่อให้อัปโหลดง่ายและไม่ต้องตั้ง
+   COOP/COEP header (เกมนี้ไม่ต้องใช้ SharedArrayBuffer)
+5. `builds/` ไม่ถูก commit — ถ้าจะส่งไฟล์ ให้ zip โฟลเดอร์ `builds/web` ทั้งโฟลเดอร์
+   (ไม่ใช่แค่ `index.html`) หรือส่ง `builds/windows` ทั้งคู่ `.exe` + `.pck`
+
+## 7) โครงสร้างโปรเจกต์
+
+```text
+ogfrontier/
+├── project.godot            # ตั้งค่าโปรเจกต์ (features = 4.7)
+├── export_presets.cfg       # Web + Windows Desktop
+├── data/game_data.json      # ตัวเลขเกมทั้งหมด
+├── scenes/*.tscn            # 7 หน้าจอ (Control + script)
+├── scripts/
+│   ├── game_state.gd        # autoload: สูตร, คะแนน, save/load, สถานะ run
+│   ├── sfx.gd               # autoload: pool 8 players + mute
+│   ├── screen.gd            # คลาสแม่: fade, Esc/Enter, พื้นหลังดาว
+│   ├── pix.gd               # palette, ปุ่ม/ข้อความ, วาดยาน, โหลดรูป NASA
+│   ├── menu.gd station.gd hangar.gd mission.gd flight.gd explore.gd report.gd
+├── assets/
+│   ├── CREDITS.md           # ที่มาและลิขสิทธิ์รูป/เสียง
+│   ├── nasa/*.jpg           # รูป NASA ขนาดกลาง 4 รูป
+│   └── sfx/*.wav            # เสียง CC0 7 ไฟล์
+├── docs/OG-Frontier_Game_Data_Book.pdf
+├── tests/smoke_test.gd      # headless gate
+├── tests/golden.json        # ตัวเลขอ้างอิงจาก Python
+└── tools/
+    ├── balance_check.py     # จำลองเกมด้วย Python
+    ├── screenshots.gd       # ถ่ายภาพทุกหน้าจอ
+    └── audio_check.gd       # ตรวจว่าเสียงทั้ง 7 ไฟล์เล่นได้
+```
+
+การเชื่อมหน้าจอ: `menu → station → (hangar | mission) → flight ⇄ explore → report → (hangar | station)`
+ทุกหน้าเปลี่ยนฉากด้วย `go("ชื่อฉาก")`
+
+## 8) ฟิสิกส์จริงที่ใช้ (จาก Game Data Book)
+
+- สมการจรวด: `m_prop = m_f · (e^(Δv/(Isp·g0)) − 1)`, `g0 = 9.80665`
+- Δv แต่ละช่วง: LEO→TLI 3.2 / TLI→วงโคจรดวงจันทร์ 0.9 / ลงจอด 1.87 / ขึ้น+กลับ LEO 2.74 km/s
+  (บวก margin 10% รวม 6.06 km/s)
+- ลูกเรือ 1 คน/วัน: O₂ 0.89 kg, น้ำดื่ม 2.79 kg, อาหาร 2.39 kg
+- Isp: hypergolic ≈310 s, methalox ≈360 s, hydrolox ≈450 s
+- น้ำแข็งที่ขั้วใต้ดวงจันทร์ (LCROSS ≈ 5.6 ± 2.9% โดยมวล)
+- ค่าที่ปรับเพื่อความสนุก (ไม่ใช่ฮาร์ดแวร์จริง) ระบุด้วยคำว่า GAME ใน `game_data.json`
+- ตัวง่ายที่ตั้งใจ: ใช้ยานเดียวไม่ทิ้งถัง และบูสเตอร์ของสถานีช่วย LEO→TLI
+  (เขียนบอกผู้เล่นไว้ในหน้า Mission Control แล้ว)
+
+## 9) Save game
+
+- ตำแหน่ง: `user://ogfrontier_save.json`
+  (Windows: `%APPDATA%\Godot\app_userdata\OG-Frontier Prototype\`)
+- `save_version` ปัจจุบัน = **3** เพิ่ม `eva`, `tutorial` และ `sound`
+- เซฟเวอร์ชัน 1–2 ยังโหลดได้ เพราะคีย์ใหม่มีค่า default เท่ากับพฤติกรรมเดิม
+- ปุ่ม **RESET SAVE** ที่เมนูลบเซฟทั้งหมด
+- เครื่องมือเทสต์/สกรีนช็อตตั้ง `GameState.skip_save = true` ไม่ทับเซฟผู้เล่น
+
+## 10) Git — ทำงานเป็นทีม
+
+Repo นี้มี branch `main` (snapshot แรก) และ `overnight/opencode` (งานคืนนี้)
+
+```bash
+# ก่อนเริ่มงาน
 git pull
-git checkout -b feature/ชื่องาน     # เช่น feature/mars-mission
+git checkout -b feature/ชื่องาน
 
 # ทำเสร็จ
 git add .
 git commit -m "อธิบายสั้นๆ ว่าทำอะไร"
-git push -u origin feature/ชื่องาน   # แล้วเปิด Pull Request บน GitHub
+git push -u origin feature/ชื่องาน   # แล้วเปิด Pull Request
 ```
-กฎง่ายๆ: **คนละไฟล์/คนละหน้าจอ** จะได้ไม่ชนกัน (ไฟล์ `.tscn` กับ `game_data.json` ให้คุยกันก่อนแก้)
 
-## 7) ส่งงานเป็นเกมที่เปิดบนเว็บ/เครื่อง (Export)
+กฎ: ห้าม force push, ห้าม commit ลง `main` ตรงๆ, แยกคนละไฟล์/คนละหน้าจอ,
+และ **เกมต้องเปิดได้ก่อน commit ทุกครั้ง** (รัน smoke test ก่อน)
 
-1. Godot → **Project → Export…** → **Add…** → เลือก **Web** (หรือ Windows Desktop)
-2. ถ้ามีข้อความ "export templates missing" กด **Manage Export Templates → Download and Install**
-3. กด **Export Project** เลือกโฟลเดอร์ `builds/`
-4. สำหรับ Web ต้องเปิดผ่านเซิร์ฟเวอร์ (เช่น อัปโหลดขึ้น itch.io เลือก "HTML5 / playable in browser") ดับเบิลคลิกไฟล์ html ตรงๆ จะไม่ทำงาน
+## 11) ถ้าเจอ Error
 
-## 8) ถ้าเจอ Error
+| อาการ | วิธีแก้ |
+| --- | --- |
+| `Could not find type "Screen"` / `"Pix"` | ปิด–เปิด Godot ใหม่ หรือ Project → Reload Current Project |
+| หน้าจอดำ / ปุ่มไม่ขึ้น | ตรวจว่าเปิด `project.godot` ในโฟลเดอร์นี้ และใช้ Godot 4.7.2 |
+| ข้อความล้นกรอบ | ตรวจว่า Label ตั้ง `autowrap_mode` ก่อนกำหนด `size` (ดู `Pix.lbl`) |
+| Export ไม่ได้ | ยังไม่ได้ติดตั้ง export templates (ดูหัวข้อ 6) |
+| ไม่มีเสียง | กด SETTINGS → Sound: ON; ตรวจว่าไฟล์ใน `assets/sfx/` ถูก import (รัน `tools/audio_check.gd`) |
+| อยากเริ่มเซฟใหม่ | กด RESET SAVE ที่เมนู |
 
-- **Parse Error / Identifier not declared:** ดูแถบ *Output* หรือ *Debugger* ด้านล่าง Godot จะบอกชื่อไฟล์+เลขบรรทัด — คัดลอกข้อความมาส่งให้ผม
-- **หน้าจอดำ/ปุ่มไม่ขึ้น:** ตรวจว่าเปิดด้วย `project.godot` ในโฟลเดอร์นี้ และ Godot เป็นรุ่น 4.3+
-- **Could not find type "Screen" หรือ "Pix":** ปิด Godot เปิดใหม่ (ให้สแกน class ใหม่) หรือเมนู *Project → Reload Current Project*
-- **อยากเริ่มเซฟใหม่:** กด RESET SAVE ที่เมนู (เซฟอยู่ที่ `user://ogfrontier_save.json`)
+## 12) เครดิต
 
-## 9) ขั้นต่อไปที่แนะนำ (แบ่งงานทีม)
-
-1. ผู้เล่นโค้ด: ทดสอบทุกหน้า แก้บั๊ก, เพิ่มเสียง/ภาพเคลื่อนไหว
-2. ผู้ดูแลข้อมูล: ทบทวนตัวเลขใน json เทียบ Game Data Book, เพิ่มเหตุการณ์จริงจาก NASA
-3. ผู้ออกแบบ: ทำ sprite พิกเซลจริงแทนการวาดด้วยสี่เหลี่ยม, ปรับ UI
-4. ส่วนที่โจทย์บอกเป็นทางเลือก: leaderboard/เทียบผล (ตอนนี้มีประวัติ 6 รอบ + best score แล้ว), โหมด 2–4 ผู้เล่น
+- รูปถ่าย: NASA (public domain / NASA media usage guidelines) —
+  Earthrise (Apollo 8), Lunar Module (Apollo 11), EVA (Apollo 11), Mission Control (Apollo 9)
+  ดูรายละเอียดที่ [`assets/CREDITS.md`](assets/CREDITS.md)
+- เสียง: The Essential Retro Video Game Sound Effects Collection โดย Juhani Junkala
+  (OpenGameArt, **CC0**) — 7 ไฟล์ใน `assets/sfx/`
+- กราฟิกที่เหลือวาดด้วยโค้ดใน `scripts/pix.gd` ทั้งหมด
+- ฟอนต์: ฟอนต์ default ของ Godot (ยังไม่มีฟอนต์ไทย — เป็นคำถามเปิดใน `OVERNIGHT_LOG.md`)

@@ -44,11 +44,13 @@ func refresh() -> void:
 	var yy := 216
 	for leg in m["legs"]:
 		Pix.lbl(ui, "%s: %.2f km/s  (failure = %s)" % [leg["name"], float(leg["dv"]), leg["fail"]], Vector2(440, yy), Vector2(800, 22), 15)
-		yy += 24
-	Pix.lbl(ui, "Total delta-v needed: %.2f km/s   |   your ship: %.2f km/s" % [a["dv_need"], a["dv"]], Vector2(440, yy + 4), Vector2(800, 22), 16, Pix.GOOD if a["dv"] >= a["dv_need"] else Pix.BAD)
-	yy += 40
+		if leg.has("note"):
+			Pix.lbl(ui, String(leg["note"]), Vector2(452, yy + 20), Vector2(790, 20), 13, Pix.DIM)
+		yy += 46
+	Pix.lbl(ui, "Total delta-v needed: %.2f km/s   |   your ship: %.2f km/s" % [a["dv_need"], a["dv"]], Vector2(440, yy + 2), Vector2(800, 22), 16, Pix.GOOD if a["dv"] >= a["dv_need"] else Pix.BAD)
+	yy += 34
 	Pix.lbl(ui, "Note: the LEO -> trans-lunar injection burn (3.2 km/s) is done by the station's booster in this prototype, so the ship only flies the three legs above.", Vector2(440, yy), Vector2(800, 44), 13, Pix.DIM)
-	yy += 56
+	yy += 52
 	Pix.lbl(ui, "CREW: %d   |   DURATION: %.0f days (+ delays)   |   SEED: %d" % [int(GameState.C["crew"]), GameState.mission_days(m), GameState.seed_value], Vector2(440, yy), Vector2(800, 22), 15)
 	yy += 34
 	if a["issues"].is_empty():
@@ -73,3 +75,6 @@ func on_launch() -> void:
 	GameState.save_game()
 	GameState.start_run("moon")
 	go("flight")
+
+func back_scene() -> String:
+	return "station"

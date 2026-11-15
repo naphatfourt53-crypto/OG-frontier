@@ -10,9 +10,13 @@ func build() -> void:
 	star_seed = 31
 	ui = Control.new()
 	ui.size = Vector2(1280, 720)
+	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
 	stats = Control.new()
 	stats.size = Vector2(1280, 720)
+	# The stats layer covers the whole screen but only draws labels. Without IGNORE it
+	# swallows every click, which made the hangar look like a static picture.
+	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stats)
 	rebuild()
 
@@ -36,6 +40,9 @@ func build_parts() -> void:
 		for o in p["options"]:
 			var b := Button.new()
 			b.text = o["name"]
+			if int(GameState.data["recommended"][pid]) == i:
+				b.text += " *"
+				b.tooltip_text = "Recommended option in the sample design"
 			b.position = Vector2(20 + i * 195, y + 20)
 			b.size = Vector2(188, 34)
 			b.add_theme_font_size_override("font_size", 14)
@@ -71,8 +78,8 @@ func on_sample() -> void:
 	GameState.load_sample_design()
 	rebuild()
 
-func line(y: float, text: String, col: Color = Pix.TEXT) -> void:
-	Pix.lbl(stats, text, Vector2(1010, y), Vector2(255, 40), 14, col)
+func line(y: float, text: String, col: Color = Pix.TEXT) -> Label:
+	return Pix.lbl(stats, text, Vector2(1010, y), Vector2(255, 40), 14, col)
 
 func refresh_stats() -> void:
 	Pix.clear(stats)
@@ -89,7 +96,9 @@ func refresh_stats() -> void:
 	y += 26
 	line(y, "Power: +%.1f - %.1f = %+.1f kW" % [a["gen_solar"] + a["gen_other"], a["use"], a["net"]], good if a["net"] >= 0.0 else bad)
 	y += 26
-	line(y, "Delta-v: %.2f km/s (need %.2f)" % [a["dv"], a["dv_need"]], good if a["dv"] >= a["dv_need"] else bad)
+	var dv_lbl := line(y, "Delta-v: %.2f km/s (need %.2f)" % [a["dv"], a["dv_need"]], good if a["dv"] >= a["dv_need"] else bad)
+	dv_lbl.tooltip_text = "Delta-v (m/s) is how much velocity the ship can change with its propellant.\nIt comes from the rocket equation: dv = Isp * g0 * ln(m0/mf).\nThe mission needs 6.06 km/s including a 10% margin."
+	dv_lbl.mouse_entered.connect(func(): info.text = "Delta-v = Isp x g0 x ln(mass full / mass dry). More propellant, a bigger tank or a higher-Isp engine buys more of it.")
 	y += 26
 	line(y, "Isp: %.0f s   Comm quality: %d%%" % [a["isp"], int(a["comm_q"] * 100.0)])
 	y += 26
@@ -113,3 +122,6 @@ func refresh_stats() -> void:
 
 func draw_extra() -> void:
 	Pix.draw_ship(self, Vector2(800, 150), GameState.design, 6.0, false)
+
+func back_scene() -> String:
+	return "station"

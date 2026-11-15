@@ -4,6 +4,15 @@ extends RefCounted
 # No external images, so there are no copyright problems.
 
 const BG := Color("0b1026")
+
+# Photographs (NASA, public domain) are optional: if a file is missing or fails to
+# import, every photo helper falls back to the code-drawn art so the game still runs.
+const NASA_MENU := "res://assets/nasa/as08-14-2383.jpg"
+const NASA_LANDER := "res://assets/nasa/as11-40-5927.jpg"
+const NASA_ASTRONAUT := "res://assets/nasa/KSC-AS-11-40-5902.jpg"
+const NASA_CONTROL := "res://assets/nasa/S69-26301.jpg"
+
+static var _tex_cache: Dictionary = {}
 const PANEL := Color("141b3d")
 const EDGE := Color("4fd1ff")
 const TEXT := Color("e8f1ff")
@@ -43,13 +52,15 @@ static func make_theme() -> Theme:
 
 static func lbl(parent: Node, text: String, pos: Vector2, size: Vector2, fsize: int = 16, color: Color = TEXT) -> Label:
 	var l := Label.new()
-	l.text = text
-	l.position = pos
-	l.size = size
+	# Autowrap must be enabled BEFORE assigning size: Control.set_size() clamps to the
+	# current minimum size, and an unwrapped Label's minimum width is the whole string.
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.text = text
 	l.add_theme_font_size_override("font_size", fsize)
 	l.add_theme_color_override("font_color", color)
 	parent.add_child(l)
+	l.position = pos
+	l.size = size
 	return l
 
 static func btn(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Callable) -> Button:
@@ -57,9 +68,20 @@ static func btn(parent: Node, text: String, pos: Vector2, size: Vector2, cb: Cal
 	b.text = text
 	b.position = pos
 	b.size = size
+	# Every menu button clicks. Looked up at runtime so Pix also works in tools
+	# that run without the Sfx autoload.
+	b.pressed.connect(func(): sfx("click"))
 	b.pressed.connect(cb)
 	parent.add_child(b)
 	return b
+
+static func sfx(key: String) -> void:
+	var loop := Engine.get_main_loop() as SceneTree
+	if loop == null:
+		return
+	var player := loop.root.get_node_or_null("Sfx")
+	if player != null:
+		player.play(key)
 
 static func panel(parent: Node, pos: Vector2, size: Vector2) -> Panel:
 	var p := Panel.new()
@@ -71,6 +93,49 @@ static func panel(parent: Node, pos: Vector2, size: Vector2) -> Panel:
 static func clear(node: Node) -> void:
 	for c in node.get_children():
 		c.queue_free()
+
+static func tex(path: String) -> Texture2D:
+	# Cached so redrawing a photo every frame does not touch the resource loader.
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var t: Texture2D = null
+	if ResourceLoader.exists(path):
+		t = load(path) as Texture2D
+	_tex_cache[path] = t
+	return t
+
+static func photo(c: CanvasItem, path: String, rect: Rect2, shade: float = 0.0) -> bool:
+	# Cover-fit: crop the source to the target aspect so the image is never squashed.
+	var t := tex(path)
+	if t == null:
+		return false
+	var ts := t.get_size()
+	if ts.x < 1.0 or ts.y < 1.0:
+		return false
+	var src := Rect2(Vector2.ZERO, ts)
+	var target_ar := rect.size.x / maxf(1.0, rect.size.y)
+	var src_ar := ts.x / ts.y
+	if src_ar > target_ar:
+		src.size.x = ts.y * target_ar
+		src.position.x = (ts.x - src.size.x) * 0.5
+	else:
+		src.size.y = ts.x / target_ar
+		src.position.y = (ts.y - src.size.y) * 0.5
+	c.draw_texture_rect_region(t, rect, src)
+	if shade > 0.0:
+		c.draw_rect(rect, Color(0.02, 0.03, 0.08, clampf(shade, 0.0, 1.0)))
+	return true
+
+static func photo_frame(c: CanvasItem, path: String, rect: Rect2, shade: float = 0.0) -> bool:
+	# Framed archival photo. Returns false when the image is unavailable so callers
+	# can keep their vector-art layout.
+	c.draw_rect(rect.grow(3.0), Color("2c3a7a"))
+	c.draw_rect(rect.grow(1.0), Color("8fa3c9"))
+	var ok := photo(c, path, rect, shade)
+	if not ok:
+		c.draw_rect(rect, Color("141b3d"))
+	return ok
+
 
 static func stars(c: Control, seed_v: int, count: int = 120) -> void:
 	c.draw_rect(Rect2(Vector2.ZERO, c.size), BG)

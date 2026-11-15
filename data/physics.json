@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "note": "Orbital mechanics + solar flux constants and reference trips. Values marked std are standard textbook/JPL constants that were NOT re-opened in the research session (see Data Book unverified list). Tags: real, calc, game, std.",
+  "constants": {
+    "au_m": 1.495978707e11,
+    "mu_sun_m3_s2": 1.32712440018e20,
+    "mu_earth_m3_s2": 3.986004418e14,
+    "mu_moon_m3_s2": 4.9048695e12,
+    "solar_constant_w_m2": 1361.0,
+    "seconds_per_day": 86400.0
+  },
+  "bodies": {
+    "venus":   { "a_au": 0.72333,  "period_days": 224.701 },
+    "earth":   { "a_au": 1.0,      "period_days": 365.256 },
+    "mars":    { "a_au": 1.52368,  "period_days": 686.98 },
+    "jupiter": { "a_au": 5.20289,  "period_days": 4332.59 }
+  },
+  "reference_trips": {
+    "earth_moon_hohmann_days": 4.98,
+    "earth_moon_apollo11_coast_hours": 72.99,
+    "earth_moon_apollo11_coast_days": 3.04,
+    "mars_hohmann_one_way_days": 258.9,
+    "mars_stay_days": 454.0,
+    "mars_round_trip_days": 972.0,
+    "mars_synodic_days": 779.9
+  },
+  "moon_surface": { "synodic_month_days": 29.53, "night_days": 14.77 },
+  "tags": {
+    "constants.au_m": "std",
+    "constants.mu_sun_m3_s2": "std",
+    "constants.mu_earth_m3_s2": "std",
+    "constants.mu_moon_m3_s2": "std",
+    "constants.solar_constant_w_m2": "real",
+    "constants.seconds_per_day": "real",
+    "bodies": "std",
+    "reference_trips.earth_moon_hohmann_days": "calc",
+    "reference_trips.earth_moon_apollo11_coast_hours": "real",
+    "reference_trips.earth_moon_apollo11_coast_days": "calc",
+    "reference_trips.mars_hohmann_one_way_days": "calc",
+    "reference_trips.mars_stay_days": "calc",
+    "reference_trips.mars_round_trip_days": "calc",
+    "reference_trips.mars_synodic_days": "calc",
+    "moon_surface": "std"
+  }
+}

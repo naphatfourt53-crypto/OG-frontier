@@ -37,6 +37,22 @@ var best_score: int = 0
 var history: Array = []
 var run: Dictionary = {}
 var last_report: Dictionary = {}
+# Player settings (persisted; new keys are optional so old saves still load).
+var eva_seconds: float = 60.0
+var tutorial_seen: bool = false
+var sound_on: bool = true
+var story_seen: bool = false
+# Station-side progress. `day` is the in-game mission day (1 = arrival at the ISS).
+var day: int = 1
+var food_store: float = 0.0
+var prep: Dictionary = {"rad_kit": false, "scout": false}
+var plots: Array = []
+var ore: Dictionary = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
+# Set by automated tests/screenshot tools so they never overwrite the player's save.
+var skip_save: bool = false
+# Set by Screen.go() so the next screen knows to fade in from black.
+var pending_fade: bool = false
+const SAVE_VERSION := 4
 
 func _ready() -> void:
 	var f := FileAccess.open(DATA_PATH, FileAccess.READ)
@@ -61,6 +77,15 @@ func reset_all() -> void:
 	mars_unlocked = false
 	best_score = 0
 	history = []
+	eva_seconds = 60.0
+	tutorial_seen = false
+	sound_on = true
+	story_seen = false
+	day = int(C.get("start_day", 1))
+	food_store = 0.0
+	prep = {"rad_kit": false, "scout": false}
+	plots = []
+	ore = {"ice": 0, "regolith": 0, "ilmenite": 0, "helium3": 0}
 
 func new_seed() -> void:
 	seed_value = randi() % 90000 + 10000
@@ -100,6 +125,120 @@ func data_mult_bonus() -> float:
 			v *= float(m["bonus"]["data_mult"])
 	return v
 
+func has_module(id: String) -> bool:
+	return built.has(id)
+
+# ---------- station clock, smelter, farm and prep ----------
+
+func date_text() -> String:
+	# Fixed mission epoch so "today" is part of the fiction, not the player's PC clock.
+	var start := int(C.get("start_unix", 0))
+	return Time.get_datetime_string_from_unix_time(start + maxi(0, day - 1) * 86400, true).substr(0, 10)
+
+func smelter_points() -> int:
+	var total := 0
+	for k in ore:
+		if data["moon_resources"].has(k):
+			total += int(ore[k]) * int(data["moon_resources"][k]["pts"])
+	return total
+
+func smelter_pct() -> float:
+	return clampf(float(smelter_points()) / float(C.get("smelter_target", 165)), 0.0, 1.0)
+
+func prep_cost(key: String) -> int:
+	var p: Dictionary = C.get("prep", {})
+	return int(p.get(key + "_cost", 0))
+
+func buy_prep(key: String) -> Dictionary:
+	if not prep.has(key):
+		return {"ok": false, "text": "Unknown preparation."}
+	if bool(prep[key]):
+		prep[key] = false
+		save_game()
+		return {"ok": true, "text": "Removed from the next flight."}
+	var cost := prep_cost(key)
+	if station_data < cost:
+		return {"ok": false, "text": "Not enough Data (need %d, have %d)." % [cost, station_data]}
+	station_data -= cost
+	prep[key] = true
+	save_game()
+	var label := "Radiation blanket" if key == "rad_kit" else "Scout drone"
+	return {"ok": true, "text": "%s loaded for the next flight." % label}
+
+func ensure_plot() -> void:
+	if not plots.is_empty():
+		return
+	var game: Dictionary = Farm.cfg()["game"]
+	plots.append(Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"])))
+
+func plot_ready() -> bool:
+	if plots.is_empty():
+		return false
+	return Farm.crop_ready(plots[0])
+
+func plot_kg() -> float:
+	if plots.is_empty():
+		return 0.0
+	return Farm.harvest_kg(plots[0])
+
+func tend_plot(days: float = 1.0) -> Dictionary:
+	if not has_module("greenhouse"):
+		return {"ok": false, "text": "Build the Greenhouse module at the ISS first."}
+	ensure_plot()
+	var cfg := Farm.cfg()
+	var p: Dictionary = plots[0]
+	Farm.advance_plot(p, days, float(cfg["default_ppfd_umol_m2_s"]),
+		float(cfg["default_photoperiod_h"]), float(cfg["game"]["water_factor_default"]))
+	day += int(round(days))
+	save_game()
+	var state := "READY TO HARVEST" if Farm.crop_ready(p) else "growing"
+	return {"ok": true, "text": "%s: day %d of %d (%s)." % [
+		Farm.crop(p["crop"])["name"], int(p["age_days"]), int(Farm.crop(p["crop"])["growth_days"]), state]}
+
+func harvest_plot() -> Dictionary:
+	if not has_module("greenhouse") or not plot_ready():
+		return {"ok": false, "text": "Nothing ready to harvest yet."}
+	var kg := plot_kg()
+	food_store += kg
+	var game: Dictionary = Farm.cfg()["game"]
+	plots[0] = Farm.new_plot(String(game["starter_crop"]), float(game["plot_area_m2"]))
+	save_game()
+	return {"ok": true, "text": "Harvested %.1f kg of lettuce. ISS food store: %.1f kg." % [kg, food_store]}
+
+func study_samples() -> Dictionary:
+	var gain := int(C.get("study_data", 8))
+	if has_module("lab"):
+		gain = int(round(gain * 1.25))
+	station_data += gain
+	day += 1
+	save_game()
+	return {"ok": true, "text": "Studied the samples (+%d Data, +1 day)." % gain}
+
+func rest_day() -> Dictionary:
+	day += 1
+	save_game()
+	return {"ok": true, "text": "Crew rested. The ISS clock advances one day."}
+
+# A one-day activity performed during the voyage. Costs supplies through _consume().
+func crew_activity(kind: String) -> Dictionary:
+	if run.is_empty() or bool(run.get("over", false)):
+		return {"ok": false, "text": "No flight in progress."}
+	var acts: Dictionary = C.get("crew_activities", {})
+	if not acts.has(kind):
+		return {"ok": false, "text": "Unknown activity."}
+	var act: Dictionary = acts[kind]
+	var txt := _consume(float(act.get("days", 1.0)), "Crew: " + String(act["name"]))
+	if bool(run.get("over", false)):
+		return {"ok": false, "text": txt}
+	if act.has("food_kg"):
+		run["stock"]["food"] += float(act["food_kg"])
+	if act.has("data"):
+		run["data_raw"] += float(act["data"])
+	if act.has("hull"):
+		run["hull"] = minf(100.0, float(run["hull"]) + float(act["hull"]))
+	_log("%s: %s" % [act["name"], act.get("info", "")])
+	return {"ok": true, "text": String(act.get("info", txt))}
+
 func mission_days(m: Dictionary) -> float:
 	var t := 0.0
 	for k in m["days"]:
@@ -128,15 +267,17 @@ func analyze(mission_id: String = "moon") -> Dictionary:
 		else:
 			use += -pw
 	gen_solar += bonus("power_kw")
-	# consumables
+	# consumables. Food grown at the ISS offsets the food that must be packed from storage.
 	var days := mission_days(m)
 	var crew := float(C["crew"])
 	var rate: Dictionary = C["crew_day_kg"]
 	var life: Dictionary = opt("life")
+	var food_raw := crew * days * float(rate["food"])
+	var food_used := minf(food_store, food_raw)
 	var need := {
 		"o2": crew * days * float(rate["o2"]) * (1.0 - float(life["o2_rec"])),
 		"water": crew * days * float(rate["water"]) * (1.0 - float(life["water_rec"])),
-		"food": crew * days * float(rate["food"])
+		"food": food_raw - food_used
 	}
 	var total_need := float(need["o2"]) + float(need["water"]) + float(need["food"])
 	var cap := float(opt("storage")["cap_kg"]) + bonus("storage_kg")
@@ -177,6 +318,8 @@ func analyze(mission_id: String = "moon") -> Dictionary:
 	a["pack"] = pack
 	a["total_need"] = total_need
 	a["cap"] = cap
+	a["food_store"] = food_store
+	a["food_store_used"] = food_used
 	a["comm_q"] = minf(1.0, float(opt("comms")["quality"]) + bonus("comms_q"))
 	a["shield"] = float(opt("cockpit")["shield"])
 	var issues: Array = []
@@ -199,6 +342,11 @@ func analyze(mission_id: String = "moon") -> Dictionary:
 func start_run(mission_id: String) -> void:
 	var m := mission(mission_id)
 	var a := analyze(mission_id)
+	var food_used := float(a.get("food_store_used", 0.0))
+	food_store = maxf(0.0, food_store - food_used)
+	var prep_cfg: Dictionary = C.get("prep", {})
+	var rad_mult := float(prep_cfg.get("rad_mult", 1.0)) if bool(prep.get("rad_kit", false)) else 1.0
+	var has_scout := bool(prep.get("scout", false))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var space: Array = []
@@ -220,11 +368,15 @@ func start_run(mission_id: String) -> void:
 		"mission": mission_id, "a": a, "step": 0, "event_i": 0, "events": [e1, e2, e3],
 		"day": 0.0, "hull": 100.0, "dry": a["dry_kg"], "prop": a["prop_kg"], "prop0": a["prop_kg"],
 		"stock": a["pack"].duplicate(), "stock0": a["pack"].duplicate(),
-		"power_mult": 1.0, "data_mult": 1.0, "data_raw": 0.0, "explore_pts": 0.0,
+		"power_mult": 1.0, "data_mult": 1.0, "data_raw": 0.0, "explore_pts": 0.0, "explore_counts": {},
 		"over": false, "reason": "", "detail": "", "landed": false, "success": false,
 		"legs": [], "log": [], "decisions": [], "current_event": {}, "score": 0, "data_gain": 0,
-		"min_net": 999.0
+		"min_net": 999.0, "rad_mult": rad_mult, "scout": has_scout, "food_store_used": food_used,
+		"stamina_btu": 0.0, "eva_food_kcal": 0.0
 	}
+	# Gear is loaded for this flight only; the player buys it again at the ship.
+	prep["rad_kit"] = false
+	prep["scout"] = false
 
 func _log(t: String) -> void:
 	run["log"].append("Day %.0f: %s" % [run["day"], t])
@@ -328,9 +480,15 @@ func advance() -> Dictionary:
 		return {"kind": "end", "text": text}
 	return {"kind": "info", "text": text, "step": s}
 
-func finish_explore(points: float) -> void:
+func finish_explore(points: float, counts: Dictionary = {}, stamina_btu: float = 0.0, eva_food_kcal: float = 0.0) -> void:
 	run["explore_pts"] = points
+	run["explore_counts"] = counts.duplicate()
+	run["stamina_btu"] = stamina_btu
+	run["eva_food_kcal"] = eva_food_kcal
 	run["data_raw"] += points
+	for k in counts:
+		if ore.has(k):
+			ore[k] += int(counts[k])
 	_log("EVA complete: %.0f science points collected." % points)
 
 func apply_choice(i: int) -> String:
@@ -350,7 +508,7 @@ func apply_choice(i: int) -> String:
 	if fx.has("hull"):
 		run["hull"] += float(fx["hull"])
 	if fx.has("rad_hull"):
-		run["hull"] -= float(fx["rad_hull"]) * (1.0 - float(run["a"]["shield"]))
+		run["hull"] -= float(fx["rad_hull"]) * (1.0 - float(run["a"]["shield"])) * float(run.get("rad_mult", 1.0))
 	if fx.has("power_mult"):
 		run["power_mult"] = float(fx["power_mult"])
 	if fx.has("data_mult"):
@@ -367,6 +525,7 @@ func finalize() -> void:
 	if run.has("done"):
 		return
 	run["done"] = true
+	day += int(round(float(run.get("day", 0.0))))
 	var a: Dictionary = run["a"]
 	var gain := float(run["data_raw"]) * float(run["data_mult"]) * (0.5 + 0.5 * float(a["comm_q"])) * data_mult_bonus()
 	run["data_gain"] = int(round(gain))
@@ -399,8 +558,13 @@ func build_module(id: String) -> bool:
 
 # ---------- save / load ----------
 func save_game() -> void:
-	var d := {"station_data": station_data, "built": built.keys(), "mars": mars_unlocked, "best": best_score,
-		"history": history, "design": design, "fuel": fuel_pct, "seed": seed_value}
+	if skip_save:
+		return
+	var d := {"save_version": SAVE_VERSION,
+		"station_data": station_data, "built": built.keys(), "mars": mars_unlocked, "best": best_score,
+		"history": history, "design": design, "fuel": fuel_pct, "seed": seed_value,
+		"eva": eva_seconds, "tutorial": tutorial_seen, "sound": sound_on,
+		"story": story_seen, "day": day, "food": food_store, "prep": prep, "plots": plots, "ore": ore}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -420,6 +584,23 @@ func load_game() -> void:
 	history = d.get("history", [])
 	fuel_pct = float(d.get("fuel", 1.0))
 	seed_value = int(d.get("seed", 0))
+	# v1 saves simply lack these keys; the defaults above are the v1 behaviour.
+	eva_seconds = clampf(float(d.get("eva", 60.0)), 30.0, 300.0)
+	tutorial_seen = bool(d.get("tutorial", false))
+	sound_on = bool(d.get("sound", true))
+	story_seen = bool(d.get("story", false))
+	day = maxi(1, int(d.get("day", 1)))
+	food_store = maxf(0.0, float(d.get("food", 0.0)))
+	var p = d.get("prep", {})
+	if typeof(p) == TYPE_DICTIONARY:
+		prep = {"rad_kit": bool(p.get("rad_kit", false)), "scout": bool(p.get("scout", false))}
+	var pl = d.get("plots", [])
+	if typeof(pl) == TYPE_ARRAY:
+		plots = pl
+	var o = d.get("ore", {})
+	if typeof(o) == TYPE_DICTIONARY:
+		for k in ore:
+			ore[k] = int(o.get(k, 0))
 	for k in d.get("design", {}):
 		design[k] = int(d["design"][k])
 	for id in d.get("built", []):

@@ -1,41 +1,82 @@
 extends Screen
-# Screen 6 - Moon walk: 60 seconds. Collect samples (yellow) and ice (blue, inside dark craters, slows you down).
+# Screen 6 - Moon walk. Collect four surface resources (rarity and points live in game_data.json).
+# Ice and helium-3 sit inside dark craters (slow you down); ilmenite sits near rock outcrops.
 
-const TIME_LIMIT := 60.0
-const ICE_PTS := 15.0
-const SAMPLE_PTS := 5.0
-
-var t_left: float = TIME_LIMIT
+var t_left: float = 60.0
 var pl: Vector2 = Vector2(640, 380)
 var points: float = 0.0
+var counts: Dictionary = {}
 var craters: Array = []
-var ice: Array = []
-var samples: Array = []
+var outcrops: Array = []
+var items: Array = []
 var done: bool = false
+var res: Dictionary = {}
 var ui: Control
 var hud_label: Label
+var count_label: Label
+var info: Label
+
+const GROUND_TOP := 104.0
+const SPEED := 240.0
+const SLOW_SPEED := 120.0
+const PICKUP := 26.0
 
 func build() -> void:
 	star_seed = 61
+	t_left = GameState.eva_seconds
+	res = GameState.data["moon_resources"]
+	for k in res:
+		counts[k] = 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GameState.seed_value
 	for i in 3:
-		var c := Vector2(220 + i * 420 + rng.randi() % 80, 200 + rng.randi() % 320)
-		craters.append({"pos": c, "r": 90.0 + rng.randf() * 30.0})
-		for j in 2:
-			var ang := rng.randf() * TAU
-			var rr := rng.randf() * 55.0
-			ice.append(c + Vector2(cos(ang), sin(ang)) * rr)
-	for i in 14:
-		var p := Vector2(60 + rng.randi() % 1160, 110 + rng.randi() % 540)
-		if not in_crater(p):
-			samples.append(p)
+		craters.append({
+			"pos": Vector2(220 + i * 420 + rng.randi() % 80, 230 + rng.randi() % 300),
+			"r": 100.0 + rng.randf() * 40.0})
+	for i in 3:
+		outcrops.append(Vector2(160 + rng.randi() % 960, 180 + rng.randi() % 420))
+	_spawn(rng)
 	ui = Control.new()
 	ui.size = Vector2(1280, 720)
 	add_child(ui)
-	Pix.lbl(ui, "MOON WALK - collect ice and samples!", Vector2(20, 12), Vector2(700, 32), 24, Pix.EDGE)
-	Pix.lbl(ui, "WASD / arrows to move. Dark craters hide ICE (15 pts) but slow you. Samples = 5 pts. SPACE = return to lander early.", Vector2(20, 46), Vector2(1100, 24), 14, Pix.DIM)
+	Pix.lbl(ui, "MOON WALK - sample the south pole", Vector2(20, 10), Vector2(700, 32), 24, Pix.EDGE)
+	Pix.lbl(ui, "WASD / arrows to move. Craters are dark and slow you down. SPACE returns to the lander early.",
+		Vector2(20, 42), Vector2(900, 22), 14, Pix.DIM)
+	count_label = Pix.lbl(ui, "", Vector2(20, 70), Vector2(760, 24), 16, Pix.WARN)
 	hud_label = Pix.lbl(ui, "", Vector2(980, 12), Vector2(280, 30), 22, Pix.WARN)
+	info = Pix.lbl(ui, "", Vector2(760, 66), Vector2(500, 30), 14, Pix.DIM)
+
+func _spawn(rng: RandomNumberGenerator) -> void:
+	# Ice: inside craters.
+	for i in int(res["ice"]["count"]):
+		items.append(_item("ice", _in_crater_point(rng)))
+	# Helium-3: at most one per run, deep inside a crater.
+	items.append(_item("helium3", _in_crater_point(rng)))
+	# Ilmenite: near rock outcrops.
+	for i in int(res["ilmenite"]["count"]):
+		var o: Vector2 = outcrops[rng.randi() % outcrops.size()]
+		var p := o + Vector2(rng.randf_range(36.0, 70.0) * (1 if rng.randf() < 0.5 else -1), rng.randf_range(-50.0, 50.0))
+		items.append(_item("ilmenite", _clamp_ground(p)))
+	# Regolith: common, anywhere that is not a crater.
+	for i in int(res["regolith"]["count"]):
+		var p := Vector2(0, 0)
+		for attempt in 20:
+			p = Vector2(60 + rng.randi() % 1160, GROUND_TOP + 40 + rng.randi() % 500)
+			if not in_crater(p):
+				break
+		items.append(_item("regolith", p))
+
+func _item(type: String, p: Vector2) -> Dictionary:
+	return {"type": type, "pos": p, "pts": float(res[type]["pts"]), "slow": type == "ice" or type == "helium3"}
+
+func _in_crater_point(rng: RandomNumberGenerator) -> Vector2:
+	var c: Dictionary = craters[rng.randi() % craters.size()]
+	var ang := rng.randf() * TAU
+	var rr := rng.randf() * (float(c["r"]) * 0.7)
+	return _clamp_ground(Vector2(c["pos"]) + Vector2(cos(ang), sin(ang)) * rr)
+
+func _clamp_ground(p: Vector2) -> Vector2:
+	return Vector2(clampf(p.x, 40.0, 1240.0), clampf(p.y, GROUND_TOP + 30.0, 690.0))
 
 func in_crater(p: Vector2) -> bool:
 	for c in craters:
@@ -56,49 +97,70 @@ func _process(delta: float) -> void:
 		dir.y -= 1
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		dir.y += 1
-	var speed := 240.0
-	if in_crater(pl):
-		speed = 120.0
+	var speed := SLOW_SPEED if in_crater(pl) else SPEED
 	pl += dir.normalized() * speed * delta
-	pl.x = clampf(pl.x, 40.0, 1240.0)
-	pl.y = clampf(pl.y, 90.0, 690.0)
-	for p in samples.duplicate():
-		if pl.distance_to(p) < 24.0:
-			samples.erase(p)
-			points += SAMPLE_PTS
-	for p in ice.duplicate():
-		if pl.distance_to(p) < 24.0:
-			ice.erase(p)
-			points += ICE_PTS
+	pl = _clamp_ground(pl)
+	for it in items.duplicate():
+		if pl.distance_to(it["pos"]) < PICKUP:
+			items.erase(it)
+			points += float(it["pts"])
+			counts[it["type"]] += 1
+			Sfx.play("pickup")
+			info.text = "%s  +%d pts" % [String(res[it["type"]]["name"]), int(it["pts"])]
 	hud_label.text = "Time %02d   Points %d" % [int(maxf(0.0, t_left)), int(points)]
+	count_label.text = _counts_text()
 	if t_left <= 0.0 or Input.is_key_pressed(KEY_SPACE):
 		finish()
 	queue_redraw()
 
+func _counts_text() -> String:
+	var parts: Array = []
+	for k in ["ice", "regolith", "ilmenite", "helium3"]:
+		parts.append("%s %d" % [String(res[k]["name"]), int(counts.get(k, 0))])
+	return "  |  ".join(PackedStringArray(parts))
+
 func finish() -> void:
 	done = true
-	Pix.panel(ui, Vector2(380, 230), Vector2(520, 220))
-	Pix.lbl(ui, "EVA over", Vector2(410, 245), Vector2(460, 36), 28, Pix.WARN)
-	Pix.lbl(ui, "You collected %d science points. The crew returns to the lander." % int(points), Vector2(410, 295), Vector2(460, 60), 18)
-	Pix.btn(ui, "BACK TO SHIP >", Vector2(410, 380), Vector2(260, 50), func():
-		GameState.finish_explore(points)
+	Pix.panel(ui, Vector2(340, 200), Vector2(600, 300))
+	Pix.lbl(ui, "EVA OVER", Vector2(370, 216), Vector2(540, 36), 28, Pix.WARN)
+	Pix.lbl(ui, "%d science points in %d s. The crew returns to the lander." % [int(points), int(GameState.eva_seconds)],
+		Vector2(370, 256), Vector2(540, 30), 17, Pix.TEXT)
+	var y := 296.0
+	for k in ["ice", "regolith", "ilmenite", "helium3"]:
+		Pix.lbl(ui, "%s  x%d  = %d pts" % [String(res[k]["name"]), int(counts.get(k, 0)), int(counts.get(k, 0)) * int(res[k]["pts"])],
+			Vector2(370, y), Vector2(300, 22), 15, Pix.DIM)
+		y += 22.0
+	Pix.btn(ui, "BACK TO SHIP >", Vector2(370, 410), Vector2(260, 50), func():
+		GameState.finish_explore(points, counts)
 		go("flight"))
 	queue_redraw()
 
 func draw_extra() -> void:
-	draw_rect(Rect2(0, 80, 1280, 640), Color("6e6e78"))
+	draw_rect(Rect2(0, GROUND_TOP, 1280, 720 - GROUND_TOP), Color("6e6e78"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
 	for i in 160:
-		draw_rect(Rect2(rng.randi() % 1280, 80 + rng.randi() % 640, 4, 4), Color("5a5a64"))
+		draw_rect(Rect2(rng.randi() % 1280, GROUND_TOP + rng.randi() % int(720 - GROUND_TOP), 4, 4), Color("5a5a64"))
+	for o in outcrops:
+		draw_rect(Rect2(o.x - 26, o.y - 18, 52, 36), Color("4a4a52"))
+		draw_rect(Rect2(o.x - 18, o.y - 26, 30, 20), Color("55555e"))
 	for c in craters:
 		draw_circle(c["pos"], float(c["r"]), Color("2b2b36"))
 		draw_circle(c["pos"], float(c["r"]) - 10.0, Color("1c1c26"))
-	for p in ice:
-		draw_rect(Rect2(p.x - 7, p.y - 7, 14, 14), Color("7fe3ff"))
-		draw_rect(Rect2(p.x - 3, p.y - 3, 6, 6), Color.WHITE)
-	for p in samples:
-		draw_rect(Rect2(p.x - 6, p.y - 6, 12, 12), Color("ffd166"))
+	for it in items:
+		var p: Vector2 = it["pos"]
+		match String(it["type"]):
+			"ice":
+				draw_rect(Rect2(p.x - 7, p.y - 7, 14, 14), Color("7fe3ff"))
+				draw_rect(Rect2(p.x - 3, p.y - 3, 6, 6), Color.WHITE)
+			"regolith":
+				draw_rect(Rect2(p.x - 6, p.y - 6, 12, 12), Color("ffd166"))
+			"ilmenite":
+				draw_rect(Rect2(p.x - 7, p.y - 7, 14, 14), Color("d98a3d"))
+				draw_rect(Rect2(p.x - 3, p.y - 3, 6, 6), Color("f0c090"))
+			"helium3":
+				draw_rect(Rect2(p.x - 8, p.y - 8, 16, 16), Color("e8e05a"))
+				draw_rect(Rect2(p.x - 4, p.y - 4, 8, 8), Color("fff8b0"))
 	# lander
 	draw_rect(Rect2(620, 370, 40, 8), Color("cfcfcf"))
 	# astronaut

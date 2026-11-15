@@ -9,17 +9,25 @@ var hud: Control
 var ship_t: float = 0.0
 var ship_target: float = 0.0
 var ended: bool = false
+var shake: float = 0.0
+var launch_anim: float = 1.2
+var event_open: bool = false
 
 func build() -> void:
 	star_seed = 51
 	hud = Control.new()
 	hud.size = Vector2(1280, 720)
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
 	ui = Control.new()
 	ui.size = Vector2(1280, 720)
+	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
 	event_box = Control.new()
 	event_box.size = Vector2(1280, 720)
+	# Empty overlays must not eat clicks meant for CONTINUE. show_event() turns this
+	# back to STOP while a decision is on screen.
+	event_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(event_box)
 	Pix.lbl(ui, "FLIGHT LOG", Vector2(20, 14), Vector2(500, 36), 28, Pix.EDGE)
 	Pix.lbl(ui, "Seed %d" % GameState.seed_value, Vector2(1100, 20), Vector2(160, 24), 14, Pix.DIM)
@@ -29,6 +37,8 @@ func build() -> void:
 	ship_t = ship_target
 	update_hud()
 	show_log()
+	if int(GameState.run.get("step", 0)) == 0:
+		Sfx.play("launch")
 
 func set_progress() -> void:
 	var s: int = int(GameState.run["step"])
@@ -41,6 +51,12 @@ func set_progress() -> void:
 
 func _process(delta: float) -> void:
 	ship_t = move_toward(ship_t, ship_target, delta * 0.35)
+	launch_anim = maxf(0.0, launch_anim - delta)
+	if shake > 0.1:
+		shake = move_toward(shake, 0.0, delta * 26.0)
+		position = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
+	elif position != Vector2.ZERO:
+		position = Vector2.ZERO
 	queue_redraw()
 
 func draw_extra() -> void:
@@ -58,7 +74,7 @@ func draw_extra() -> void:
 		i += 0.02
 	var sx := lerpf(x0, x1, ship_t)
 	var d := GameState.design
-	Pix.draw_ship(self, Vector2(sx, 160), d, 2.0, false)
+	Pix.draw_ship(self, Vector2(sx, 160), d, 2.0, launch_anim > 0.0)
 
 func update_hud() -> void:
 	Pix.clear(hud)
@@ -106,12 +122,25 @@ func finish_flight() -> void:
 	cont_btn.pressed.disconnect(on_continue)
 	cont_btn.pressed.connect(func(): go("report"))
 
+func _dim_event_box() -> void:
+	# Darken the flight screen behind an event so HUD/log text cannot be mistaken for dialog text.
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.85)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	event_box.add_child(dim)
+
 func show_event(ev: Dictionary) -> void:
 	cont_btn.disabled = true
+	event_open = true
 	Pix.clear(event_box)
+	event_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim_event_box()
 	Pix.panel(event_box, Vector2(240, 130), Vector2(800, 400))
 	Pix.lbl(event_box, "! " + String(ev["title"]), Vector2(270, 145), Vector2(740, 36), 28, Pix.WARN)
-	Pix.lbl(event_box, String(ev["text"]), Vector2(270, 195), Vector2(740, 80), 18, Pix.TEXT)
+	var body := Pix.lbl(event_box, String(ev["text"]), Vector2(270, 195), Vector2(740, 80), 18, Pix.TEXT)
+	_type_in(body)
 	var i := 0
 	for ch in ev["choices"]:
 		var idx := i
@@ -119,15 +148,49 @@ func show_event(ev: Dictionary) -> void:
 		i += 1
 
 func choose(i: int) -> void:
+	var hull_before: float = float(GameState.run["hull"])
 	var result := GameState.apply_choice(i)
+	if float(GameState.run["hull"]) < hull_before - 0.01:
+		shake = 12.0
+		Sfx.play("damage")
+		_flash_red()
 	Pix.clear(event_box)
+	_dim_event_box()
 	Pix.panel(event_box, Vector2(240, 130), Vector2(800, 300))
 	Pix.lbl(event_box, "Result", Vector2(270, 145), Vector2(740, 36), 26, Pix.WARN)
-	Pix.lbl(event_box, result, Vector2(270, 195), Vector2(740, 100), 20, Pix.TEXT)
+	_type_in(Pix.lbl(event_box, result, Vector2(270, 195), Vector2(740, 100), 20, Pix.TEXT))
 	Pix.btn(event_box, "OK", Vector2(270, 340), Vector2(200, 50), func():
+		event_open = false
 		Pix.clear(event_box)
+		event_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cont_btn.disabled = false
 		update_hud()
 		show_log()
 		if GameState.run["over"]:
 			on_continue())
+
+func _type_in(label: Label) -> void:
+	# Short typewriter reveal; ~12 ms per character, capped so it never blocks the player long.
+	label.visible_ratio = 0.0
+	var tw := create_tween()
+	tw.tween_property(label, "visible_ratio", 1.0, clampf(label.text.length() * 0.012, 0.12, 0.6))
+
+func _flash_red() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 64
+	add_child(layer)
+	var rect := ColorRect.new()
+	rect.color = Color(1.0, 0.12, 0.12, 0.45)
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(rect)
+	var tw := create_tween()
+	tw.tween_property(rect, "color:a", 0.0, 0.45)
+	tw.tween_callback(func(): layer.queue_free())
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_accept") and not cont_btn.disabled and not event_open:
+		get_viewport().set_input_as_handled()
+		on_continue()
+	else:
+		super._unhandled_input(event)

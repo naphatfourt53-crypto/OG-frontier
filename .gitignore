@@ -3,7 +3,8 @@
 *.translation
 
 # Build output
-builds/
+builds/*
+!builds/.gdignore
 *.pck
 *.zip
 *.exe

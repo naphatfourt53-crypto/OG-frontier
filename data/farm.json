@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "note": "Greenhouse crops (NASA BVAD crop data, as extracted in Game Data Book - extracted from PDF text, not re-checked against original page). dli_mol_m2_d = null means BVAD gave no value; f_light is then 1.0. Light response f_light = min(1, DLI_actual/DLI_target) is a game simplification, tag game.",
+  "solar_wm2_earth": 1361.0,
+  "led_efficacy_umol_per_j": 2.5,
+  "default_photoperiod_h": 16,
+  "default_ppfd_umol_m2_s": 300,
+  "crops": {
+    "lettuce":      { "name": "Lettuce",      "growth_days": 28,  "dli_mol_m2_d": 17,   "edible_g_fw_m2_d": 131.35, "harvest_index_pct": 90 },
+    "wheat":        { "name": "Wheat",        "growth_days": 62,  "dli_mol_m2_d": null, "edible_g_fw_m2_d": 22.73,  "harvest_index_pct": 40 },
+    "tomato":       { "name": "Tomato",       "growth_days": 85,  "dli_mol_m2_d": 27,   "edible_g_fw_m2_d": 173.76, "harvest_index_pct": 45 },
+    "dry_bean":     { "name": "Dry bean",     "growth_days": 85,  "dli_mol_m2_d": 24,   "edible_g_fw_m2_d": 11.11,  "harvest_index_pct": 40 },
+    "rice":         { "name": "Rice",         "growth_days": 85,  "dli_mol_m2_d": 33,   "edible_g_fw_m2_d": 10.30,  "harvest_index_pct": 30 },
+    "soybean":      { "name": "Soybean",      "growth_days": 97,  "dli_mol_m2_d": 28,   "edible_g_fw_m2_d": 5.04,   "harvest_index_pct": 40 },
+    "sweet_potato": { "name": "Sweet potato", "growth_days": 85,  "dli_mol_m2_d": 28,   "edible_g_fw_m2_d": 51.72,  "harvest_index_pct": 60 },
+    "peanut":       { "name": "Peanut",       "growth_days": 104, "dli_mol_m2_d": 27,   "edible_g_fw_m2_d": 5.96,   "harvest_index_pct": 25 },
+    "white_potato": { "name": "White potato", "growth_days": 132, "dli_mol_m2_d": 28,   "edible_g_fw_m2_d": 105.30, "harvest_index_pct": 70 }
+  },
+  "game": {
+    "starter_crop": "lettuce",
+    "plot_area_m2": 1.0,
+    "water_factor_default": 1.0
+  },
+  "tags": {
+    "solar_wm2_earth": "real",
+    "led_efficacy_umol_per_j": "game",
+    "default_photoperiod_h": "game",
+    "default_ppfd_umol_m2_s": "game",
+    "crops": "real",
+    "game": "game"
+  }
+}
