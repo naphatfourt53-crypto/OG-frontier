@@ -26,6 +26,14 @@ $godot = "C:\Users\narong\OneDrive\VS_Code_Python\อบรม สจล\โป�
 & $godot --headless --path . -s tests/smoke_test.gd
 #    ต้องจบด้วย: PASS smoke_test (161 checks)
 
+# 1b. เทสต์ตัวเลข stamina/physics/farm (T10)
+& $godot --headless --path . -s tests/test_stamina_physics_farm.gd
+#    ต้องจบด้วย: PASS test_stamina_physics_farm (18 checks)
+
+# 1c. ตัวเลขฟิสิกส์ด้วย Python (tags ครบทุกคีย์)
+& "C:\Program Files\Python313\python.exe" tools\check_physics.py
+#    ต้องจบด้วย: ALL PASS (exit 0)
+
 # 2. ภาพทุกหน้าจอ (ต้องมีหน้าต่างจริง)
 & $godot --path . -s tools/screenshots.gd --resolution 1280x720
 #    ผลลัพธ์: tests/out/01_menu.png ... 18_crew.png

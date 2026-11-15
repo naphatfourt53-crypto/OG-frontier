@@ -57,6 +57,8 @@ func build() -> void:
 		Vector2(20, 42), Vector2(900, 22), 14, Pix.DIM)
 	count_label = Pix.lbl(ui, "", Vector2(20, 70), Vector2(760, 24), 16, Pix.WARN)
 	hud_label = Pix.lbl(ui, "", Vector2(900, 10), Vector2(360, 28), 20, Pix.WARN)
+	hud_label.mouse_filter = Control.MOUSE_FILTER_STOP  # so the tooltip can show
+	hud_label.tooltip_text = "Game model. Burn rates come from Apollo and ISS suit data; capacity tiers above Open-loop are game values."
 	info = Pix.lbl(ui, "", Vector2(760, 66), Vector2(500, 30), 14, Pix.DIM)
 
 func _spawn(rng: RandomNumberGenerator) -> void:
