@@ -52,7 +52,12 @@ func _run() -> void:
 	while guard < 40:
 		res = gs.advance()
 		guard += 1
-		if res.get("kind", "") == "event" or res.get("kind", "") == "end":
+		var kind := String(res.get("kind", ""))
+		if kind == "nav":
+			gs.resolve_nav(1.0)
+		elif kind == "burn":
+			gs.resolve_burn(1.0)
+		elif kind == "event" or kind == "end":
 			break
 	var flight = await _open("flight")
 	await _capture("05_flight")
@@ -64,6 +69,22 @@ func _run() -> void:
 		await create_timer(0.75).timeout
 		await _capture("07_event_result")
 	await _close(flight)
+
+	# T17 in-transit activity overlays (the run is mid-plan; the screens are pure UI).
+	var flight_act = await _open("flight")
+	flight_act.show_nav(0)
+	await _frames(2)
+	await _capture("19_nav_sighting")
+	flight_act.close_activity()
+	flight_act.show_burn()
+	await _frames(2)
+	await _capture("20_midcourse_burn")
+	flight_act.close_activity()
+	flight_act.open_schedule()
+	await _frames(2)
+	await _capture("21_schedule")
+	flight_act.close_activity()
+	await _close(flight_act)
 
 	# Run to the EVA, screenshot it, then finish the mission and show the report.
 	guard = 0
@@ -120,6 +141,7 @@ func _run() -> void:
 	gs.load_sample_design()
 	gs.start_run("moon")
 	var flight2 = await _open("flight")
+	flight2.close_activity()  # the pre-flight checklist auto-opens on a fresh run
 	flight2.open_crew()
 	await _frames(2)
 	await _capture("18_crew")

@@ -7,6 +7,7 @@ var cont_btn: Button
 var crew_btn: Button
 var event_box: Control
 var crew_box: Control
+var activity_box: Control
 var hud: Control
 var ship_t: float = 0.0
 var ship_target: float = 0.0
@@ -15,6 +16,25 @@ var shake: float = 0.0
 var launch_anim: float = 1.2
 var event_open: bool = false
 var crew_msg: String = "Choose one activity. Each one spends a full day of supplies."
+# T17 in-transit activities
+var nav_active: bool = false
+var nav_elapsed: float = 0.0
+var nav_inside: float = 0.0
+var nav_center: Vector2 = Vector2(640, 300)
+var nav_dot: ColorRect
+var nav_bar: ColorRect
+var nav_status: Label
+var burn_active: bool = false
+var burn_held: float = 0.0
+var burn_was_holding: bool = false
+var burn_bar: ColorRect
+var burn_status: Label
+var launch_open: bool = false
+var comms_left: float = -1.0
+var comms_timed_out: bool = false
+var comms_label: Label
+
+const NAV_RADIUS := 48.0
 
 func build() -> void:
 	star_seed = 51
@@ -37,6 +57,11 @@ func build() -> void:
 	crew_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crew_box.visible = false
 	add_child(crew_box)
+	activity_box = Control.new()
+	activity_box.size = Vector2(1280, 720)
+	activity_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	activity_box.visible = false
+	add_child(activity_box)
 	Pix.lbl(ui, "FLIGHT LOG", Vector2(20, 14), Vector2(500, 36), 28, Pix.EDGE)
 	Pix.lbl(ui, "Seed %d" % GameState.seed_value, Vector2(1100, 20), Vector2(160, 24), 14, Pix.DIM)
 	log_label = Pix.lbl(ui, "", Vector2(20, 330), Vector2(1240, 300), 15, Pix.TEXT)
@@ -47,17 +72,15 @@ func build() -> void:
 	ship_t = ship_target
 	update_hud()
 	show_log()
-	if int(GameState.run.get("step", 0)) == 0:
+	if int(GameState.run.get("plan_i", 0)) == 0:
 		Sfx.play("launch")
+		open_schedule()
 
 func set_progress() -> void:
-	var s: int = int(GameState.run["step"])
-	if s <= 5:
-		ship_target = float(s) / 5.0
-	elif s <= 8:
-		ship_target = 1.0
-	else:
-		ship_target = 1.0 - float(s - 8) / 4.0
+	var plan: Array = GameState.run.get("plan", [])
+	if plan.is_empty():
+		return
+	ship_target = clampf(float(GameState.run.get("plan_i", 0)) / float(plan.size()), 0.0, 1.0)
 
 func _process(delta: float) -> void:
 	ship_t = move_toward(ship_t, ship_target, delta * 0.35)
@@ -67,7 +90,175 @@ func _process(delta: float) -> void:
 		position = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
 	elif position != Vector2.ZERO:
 		position = Vector2.ZERO
+	if nav_active:
+		_process_nav(delta)
+	if burn_active:
+		_process_burn(delta)
+	if comms_left >= 0.0:
+		_process_comms(delta)
 	queue_redraw()
+
+# ---------- T17 in-transit activities ----------
+
+func _process_nav(delta: float) -> void:
+	nav_elapsed += delta
+	nav_center = Vector2(640.0 + sin(nav_elapsed * 2.1) * 120.0, 300.0 + cos(nav_elapsed * 1.7) * 70.0)
+	if get_global_mouse_position().distance_to(nav_center) < NAV_RADIUS:
+		nav_inside += delta
+	var win := float(GameState.activities()["game"]["transit"]["nav_sighting"]["window_s"])
+	nav_dot.position = nav_center - Vector2(NAV_RADIUS, NAV_RADIUS)
+	nav_bar.size.x = 560.0 * clampf(nav_elapsed / win, 0.0, 1.0)
+	nav_status.text = "Keep the cursor inside the circle.  %.1f / %.0f s" % [minf(nav_elapsed, win), win]
+	if nav_elapsed >= win:
+		nav_active = false
+		var acc := nav_inside / maxf(nav_elapsed, 0.001)
+		_show_activity_result("NAVIGATION SIGHTING", GameState.resolve_nav(acc))
+
+func _process_burn(delta: float) -> void:
+	var holding := Input.is_key_pressed(KEY_SPACE) or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var hold_s := float(GameState.activities()["game"]["transit"]["midcourse_correction"]["burn_hold_s"])
+	if holding:
+		burn_held += delta
+	burn_bar.size.x = 560.0 * clampf(burn_held / hold_s, 0.0, 1.0)
+	burn_status.text = "Hold SPACE or the mouse button.  %.1f / %.0f s" % [minf(burn_held, hold_s), hold_s]
+	if burn_held >= hold_s:
+		_finish_burn()
+	elif burn_was_holding and not holding and burn_held > 0.0:
+		# Released early: the correction is cut short and the next burn pays for it.
+		_finish_burn()
+	burn_was_holding = holding
+
+func _finish_burn() -> void:
+	burn_active = false
+	var hold_s := float(GameState.activities()["game"]["transit"]["midcourse_correction"]["burn_hold_s"])
+	var frac := clampf(burn_held / hold_s, 0.0, 1.2)
+	_show_activity_result("MIDCOURSE BURN", GameState.resolve_burn(frac))
+
+func _process_comms(delta: float) -> void:
+	comms_left -= delta
+	if comms_label != null:
+		comms_label.text = "Mission control reply in %.0f s - choose before it arrives." % maxf(0.0, comms_left)
+	if comms_left <= 0.0:
+		comms_left = -1.0
+		comms_timed_out = true
+		choose(0)
+
+func _dim_activity() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.08, 0.86)
+	dim.position = Vector2.ZERO
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	activity_box.add_child(dim)
+
+func show_nav(idx: int) -> void:
+	event_open = true
+	cont_btn.disabled = true
+	nav_active = true
+	nav_elapsed = 0.0
+	nav_inside = 0.0
+	activity_box.visible = true
+	activity_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	Pix.clear(activity_box)
+	_dim_activity()
+	Pix.panel(activity_box, Vector2(240, 110), Vector2(800, 480))
+	Pix.lbl(activity_box, "NAVIGATION SIGHTING  %d/2" % (idx + 1), Vector2(270, 130), Vector2(740, 36), 26, Pix.WARN)
+	Pix.lbl(activity_box, "Star sighting fixes the ship's position before the midcourse burn.",
+		Vector2(270, 172), Vector2(740, 24), 15, Pix.TEXT)
+	Pix.lbl(activity_box, "Real basis: Apollo 11 navigation sightings (about 6 h and 24 h into the coast). Game rule: 6 s window.",
+		Vector2(270, 200), Vector2(740, 20), 12, Pix.DIM)
+	nav_dot = ColorRect.new()
+	nav_dot.color = Color(0.5, 1.0, 0.8, 0.25)
+	nav_dot.size = Vector2(NAV_RADIUS * 2.0, NAV_RADIUS * 2.0)
+	nav_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	activity_box.add_child(nav_dot)
+	nav_bar = ColorRect.new()
+	nav_bar.color = Color("2a7bd4")
+	nav_bar.position = Vector2(270, 470)
+	nav_bar.size = Vector2(560, 14)
+	nav_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	activity_box.add_child(nav_bar)
+	nav_status = Pix.lbl(activity_box, "", Vector2(270, 496), Vector2(740, 24), 14, Pix.TEXT)
+
+func show_burn() -> void:
+	event_open = true
+	cont_btn.disabled = true
+	burn_active = true
+	burn_held = 0.0
+	burn_was_holding = false
+	activity_box.visible = true
+	activity_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	Pix.clear(activity_box)
+	_dim_activity()
+	Pix.panel(activity_box, Vector2(240, 130), Vector2(800, 440))
+	Pix.lbl(activity_box, "MIDCOURSE BURN", Vector2(270, 150), Vector2(740, 36), 26, Pix.WARN)
+	Pix.lbl(activity_box, "Nominal correction: 6.37 m/s. Hold the button for the full burn - cutting it short leaves the next burn to make up the difference.",
+		Vector2(270, 192), Vector2(740, 44), 15, Pix.TEXT)
+	Pix.lbl(activity_box, "Real basis: Apollo 11 midcourse correction (20.9 ft/s). Game rule: 3 s hold.",
+		Vector2(270, 236), Vector2(740, 20), 12, Pix.DIM)
+	burn_bar = ColorRect.new()
+	burn_bar.color = Color("ff8a3d")
+	burn_bar.position = Vector2(270, 400)
+	burn_bar.size = Vector2(560, 16)
+	burn_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	activity_box.add_child(burn_bar)
+	burn_status = Pix.lbl(activity_box, "Hold SPACE or the mouse button.", Vector2(270, 430), Vector2(740, 26), 16, Pix.WARN)
+
+func open_schedule() -> void:
+	event_open = true
+	cont_btn.disabled = true
+	launch_open = true
+	activity_box.visible = true
+	activity_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	_render_schedule()
+
+func _render_schedule() -> void:
+	Pix.clear(activity_box)
+	_dim_activity()
+	Pix.panel(activity_box, Vector2(200, 110), Vector2(880, 500))
+	Pix.lbl(activity_box, "PRE-FLIGHT CHECKLIST", Vector2(230, 130), Vector2(820, 36), 26, Pix.WARN)
+	Pix.lbl(activity_box, "CREW EXERCISE", Vector2(230, 184), Vector2(400, 24), 16, Pix.WARN)
+	Pix.lbl(activity_box, "ISS crews average 2 h of exercise a day. Fewer hours lower EVA stamina on arrival (game rule).",
+		Vector2(230, 210), Vector2(820, 30), 13, Pix.DIM)
+	for i in 3:
+		var h: int = i
+		var b := Pix.btn(activity_box, "%d h / day" % h, Vector2(230 + i * 180, 246), Vector2(164, 40), func(): _pick_exercise(h))
+		if int(GameState.run.get("exercise_hours", 2)) == h:
+			b.modulate = Color(0.5, 1.0, 0.7)
+	Pix.lbl(activity_box, "THERMAL ROLL (PTC)", Vector2(230, 312), Vector2(400, 24), 16, Pix.WARN)
+	Pix.lbl(activity_box, "A slow roll evens out sunlight and shade. Apollo used about 0.3 deg/s. Skipping it stresses the hull (game rule: -2% per day of coast).",
+		Vector2(230, 338), Vector2(820, 30), 13, Pix.DIM)
+	Pix.btn(activity_box, _roll_label(), Vector2(230, 374), Vector2(260, 40), func():
+		GameState.set_thermal_roll(not bool(GameState.run.get("roll_on", true)))
+		_render_schedule())
+	Pix.btn(activity_box, "LAUNCH >", Vector2(760, 520), Vector2(260, 50), close_activity)
+
+func _pick_exercise(h: int) -> void:
+	GameState.set_exercise_hours(h)
+	_render_schedule()
+
+func _roll_label() -> String:
+	return "PTC ROLL: ON" if bool(GameState.run.get("roll_on", true)) else "PTC ROLL: OFF"
+
+func _show_activity_result(title: String, text: String) -> void:
+	Pix.clear(activity_box)
+	_dim_activity()
+	Pix.panel(activity_box, Vector2(240, 160), Vector2(800, 360))
+	Pix.lbl(activity_box, title, Vector2(270, 176), Vector2(740, 36), 26, Pix.WARN)
+	Pix.lbl(activity_box, text, Vector2(270, 232), Vector2(740, 140), 17, Pix.TEXT)
+	Pix.btn(activity_box, "OK", Vector2(270, 400), Vector2(220, 50), close_activity)
+
+func close_activity() -> void:
+	nav_active = false
+	burn_active = false
+	launch_open = false
+	event_open = false
+	Pix.clear(activity_box)
+	activity_box.visible = false
+	activity_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cont_btn.disabled = false
+	update_hud()
+	show_log()
 
 func draw_extra() -> void:
 	# Earth (left) and Moon (right), dotted path, ship marker
@@ -122,6 +313,10 @@ func on_continue() -> void:
 	match res["kind"]:
 		"explore":
 			go("explore")
+		"nav":
+			show_nav(int(res["idx"]))
+		"burn":
+			show_burn()
 		"event":
 			show_event(res["event"])
 		"end":
@@ -203,6 +398,8 @@ func _dim_event_box() -> void:
 func show_event(ev: Dictionary) -> void:
 	cont_btn.disabled = true
 	event_open = true
+	comms_timed_out = false
+	comms_left = -1.0
 	Pix.clear(event_box)
 	event_box.mouse_filter = Control.MOUSE_FILTER_STOP
 	_dim_event_box()
@@ -210,15 +407,26 @@ func show_event(ev: Dictionary) -> void:
 	Pix.lbl(event_box, "! " + String(ev["title"]), Vector2(270, 145), Vector2(740, 36), 28, Pix.WARN)
 	var body := Pix.lbl(event_box, String(ev["text"]), Vector2(270, 195), Vector2(740, 80), 18, Pix.TEXT)
 	_type_in(body)
+	if String(GameState.mission(String(GameState.run["mission"])).get("class", "")) == "mars":
+		comms_left = float(GameState.activities()["game"]["transit"]["delayed_comms_event"]["decision_time_s"])
+		comms_label = Pix.lbl(event_box, "Mission control reply in %.0f s - choose before it arrives." % comms_left,
+			Vector2(270, 282), Vector2(740, 18), 13, Pix.WARN)
 	var i := 0
 	for ch in ev["choices"]:
 		var idx := i
-		Pix.btn(event_box, String(ch["label"]), Vector2(270, 300 + i * 70), Vector2(740, 56), func(): choose(idx))
+		var btn := Pix.btn(event_box, String(ch["label"]), Vector2(270, 300 + i * 70), Vector2(740, 56), func(): choose(idx))
+		if ch.has("min_morale") and int(GameState.run.get("morale", 0)) < int(ch["min_morale"]):
+			btn.disabled = true
+			btn.text += "  (needs crew morale)"
 		i += 1
 
 func choose(i: int) -> void:
+	comms_left = -1.0
 	var hull_before: float = float(GameState.run["hull"])
-	var result := GameState.apply_choice(i)
+	var result: String = GameState.apply_choice(i)
+	if comms_timed_out:
+		comms_timed_out = false
+		result += "  (no reply from Earth in time)"
 	if float(GameState.run["hull"]) < hull_before - 0.01:
 		shake = 12.0
 		Sfx.play("damage")
@@ -258,7 +466,8 @@ func _flash_red() -> void:
 	tw.tween_callback(func(): layer.queue_free())
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept") and not cont_btn.disabled and not event_open:
+	if event.is_action_pressed("ui_accept") and not cont_btn.disabled and not event_open \
+			and not nav_active and not burn_active and not launch_open:
 		get_viewport().set_input_as_handled()
 		on_continue()
 	else:
