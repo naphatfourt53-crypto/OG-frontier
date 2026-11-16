@@ -344,6 +344,8 @@ func open_tutorial() -> void:
 		return
 	tut_step = 0
 	tut_box.visible = true
+	# The crew sprite and room labels are added after the guide box, so they would draw over it.
+	tut_box.move_to_front()
 	_render_tutorial()
 
 func _render_tutorial() -> void:
