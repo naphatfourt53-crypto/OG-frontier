@@ -218,6 +218,18 @@ func _run() -> void:
 	await _capture("30_encounter_keeping")
 	await _close(pc_keep)
 	gs.reset_all()
+	# Station prompt: the crew member stands next to the Habitat; the prompt hangs above the head.
+	gs.reset_all()
+	gs.tutorial_seen = true
+	gs.story_seen = true
+	var sp = await _open("station")
+	sp.player = Vector2(640, 350)
+	sp._update_near()
+	await _frames(2)
+	await _capture("34_station_prompt")
+	await _close(sp)
+	gs.reset_all()
+
 	# Endgame: a win and a loss, both built from the same campaign state the game saves.
 	gs.reset_all()
 	for mid in Campaign.cfg()["campaign"]["order"]:

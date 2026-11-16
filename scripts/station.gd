@@ -285,13 +285,47 @@ func _draw_actor() -> void:
 	actor.draw_rect(Rect2(player.x - 7, player.y - 14, 14, 16), Color("f2f2f2"))
 	actor.draw_rect(Rect2(player.x - 5, player.y - 21, 10, 8), Color("ffe8b0"))
 	actor.draw_rect(Rect2(player.x - 3, player.y - 19, 6, 4), Color("1fb6ff"))
-	# The prompt sits in a fixed banner above the guide line, so it never covers a room name.
-	if near_id != "":
-		var label := _near_name()
-		actor.draw_rect(Rect2(20, 574, 360, 28), Color(0.02, 0.03, 0.08, 0.92))
-		actor.draw_rect(Rect2(20, 574, 4, 28), Pix.WARN)
-		actor.draw_string(ThemeDB.fallback_font, Vector2(34, 593), label,
-			HORIZONTAL_ALIGNMENT_LEFT, 340, 15, Pix.WARN)
+	# Guides and the prompt belong to the world, not the screen: the prompt hangs above the
+	# crew member's head and the room you can use gets a highlight frame. Both hide while a
+	# guide or the story is open, so nothing competes with the text.
+	var overlay_open := (tut_box != null and tut_box.visible) or story_box != null
+	if near_id != "" and not overlay_open:
+		_draw_near_room_frame()
+		_draw_prompt()
+
+func _draw_near_room_frame() -> void:
+	for rm in _rooms:
+		if String(rm["m"]["id"]) == near_id:
+			actor.draw_rect((rm["rect"] as Rect2).grow(3.0), Pix.WARN, false, 2.0)
+
+func _draw_prompt() -> void:
+	# Anchored above the room's top edge, not above the crew member's head, so the prompt
+	# never covers the room name in the middle of the room.
+	var room_name := ""
+	var verb := "Build"
+	var anchor := Rect2()
+	for rm in _rooms:
+		if String(rm["m"]["id"]) == near_id:
+			room_name = String(rm["m"]["name"])
+			verb = "Enter" if bool(rm["built"]) else "Build"
+			anchor = rm["rect"]
+	var f := ThemeDB.fallback_font
+	var text := "%s %s" % [verb, room_name]
+	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 46.0
+	var cx := anchor.position.x + anchor.size.x * 0.5
+	var x := clampf(cx - w * 0.5, 12.0, 1268.0 - w)
+	var y := anchor.position.y - 40.0
+	var bg := Color(0.02, 0.03, 0.08, 0.92)
+	actor.draw_rect(Rect2(x, y, w, 30), bg)
+	actor.draw_rect(Rect2(x, y, w, 30), Pix.EDGE, false, 1.5)
+	# keycap for the E key
+	actor.draw_rect(Rect2(x + 6, y + 5, 20, 20), Color("1b2559"))
+	actor.draw_rect(Rect2(x + 6, y + 5, 20, 20), Pix.WARN, false, 1.5)
+	actor.draw_string(f, Vector2(x + 11, y + 20), "E", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Pix.WARN)
+	actor.draw_string(f, Vector2(x + 34, y + 20), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Pix.TEXT)
+	# pointer down to the room it belongs to
+	actor.draw_colored_polygon(PackedVector2Array([Vector2(cx - 5, y + 30), Vector2(cx + 5, y + 30),
+		Vector2(cx, y + 37)]), bg)
 
 # ---------- picture cards on hover ----------
 
